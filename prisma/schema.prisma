@@ -1,0 +1,272 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model - base for all user types
+model User {
+  id                String              @id @default(uuid())
+  email             String              @unique
+  password          String
+  firstName         String
+  lastName          String
+  phone             String?
+  role              UserRole            @default(PATIENT)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  // Relations for different user types
+  patient           Patient?
+  doctor            Doctor?
+  staff             Staff?
+  admin             Admin?
+
+  // Password reset
+  resetToken        String?
+  resetTokenExpiry  DateTime?
+  
+  @@map("users")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  DOCTOR
+  STAFF
+  PATIENT
+}
+
+// Practice model
+model Practice {
+  id                String              @id @default(uuid())
+  name              String
+  slug              String              @unique // For URL paths /[practice-id]
+  email             String
+  phone             String
+  address           String
+  city              String
+  state             String
+  zip               String
+  country           String              @default("United States")
+  website           String?
+  logo              String?             // Path to logo file
+  primaryColor      String?             // Brand primary color
+  secondaryColor    String?             // Brand secondary color
+  description       String?             @db.Text
+  active            Boolean             @default(true)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  // Relations
+  doctors           Doctor[]
+  patients          Patient[]
+  staff             Staff[]
+  services          Service[]
+  appointments      Appointment[]
+  schedules         Schedule[]
+  admins            Admin[]
+  
+  @@map("practices")
+}
+
+// Patient model
+model Patient {
+  id                String              @id @default(uuid())
+  userId            String              @unique
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dateOfBirth       DateTime?
+  gender            String?
+  address           String?
+  city              String?
+  state             String?
+  zip               String?
+  insuranceProvider String?
+  insuranceNumber   String?
+  medicalHistory    String?             @db.Text
+  allergies         String?
+  medications       String?
+  emergencyContact  String?
+  emergencyPhone    String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  // Relations
+  practices         Practice[]
+  appointments      Appointment[]
+  
+  @@map("patients")
+}
+
+// Doctor model
+model Doctor {
+  id                String              @id @default(uuid())
+  userId            String              @unique
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  practiceId        String
+  practice          Practice            @relation(fields: [practiceId], references: [id])
+  title             String              // Dr, Prof, etc.
+  specialty         String
+  bio               String?             @db.Text
+  education         String?             @db.Text
+  profileImage      String?             // Path to profile image
+  active            Boolean             @default(true)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  // Relations
+  services          Service[]
+  appointments      Appointment[]
+  schedules         Schedule[]
+  
+  @@map("doctors")
+}
+
+// Staff model (receptionists, assistants, etc.)
+model Staff {
+  id                String              @id @default(uuid())
+  userId            String              @unique
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  practiceId        String
+  practice          Practice            @relation(fields: [practiceId], references: [id])
+  position          String              // Receptionist, Office Manager, etc.
+  active            Boolean             @default(true)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  @@map("staff")
+}
+
+// Admin model (for both super admins and practice admins)
+model Admin {
+  id                String              @id @default(uuid())
+  userId            String              @unique
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isSuperAdmin      Boolean             @default(false)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  // Relations
+  practices         Practice[]          // Practices this admin manages
+  
+  @@map("admins")
+}
+
+// Service model
+model Service {
+  id                String              @id @default(uuid())
+  practiceId        String
+  practice          Practice            @relation(fields: [practiceId], references: [id])
+  name              String
+  description       String?             @db.Text
+  duration          Int                 // Duration in minutes
+  price             Decimal             @db.Decimal(10, 2)
+  color             String?             // For UI display
+  active            Boolean             @default(true)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  // Relations
+  doctors           Doctor[]            // Doctors who provide this service
+  appointments      Appointment[]
+  
+  @@map("services")
+}
+
+// Appointment model
+model Appointment {
+  id                String              @id @default(uuid())
+  practiceId        String
+  practice          Practice            @relation(fields: [practiceId], references: [id])
+  patientId         String
+  patient           Patient             @relation(fields: [patientId], references: [id])
+  doctorId          String
+  doctor            Doctor              @relation(fields: [doctorId], references: [id])
+  serviceId         String
+  service           Service             @relation(fields: [serviceId], references: [id])
+  date              DateTime
+  startTime         DateTime
+  endTime           DateTime
+  status            AppointmentStatus   @default(SCHEDULED)
+  notes             String?             @db.Text
+  cancellationReason String?            @db.Text
+  reminder          Boolean             @default(true)
+  reminderSent      Boolean             @default(false)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  @@map("appointments")
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+  RESCHEDULED
+}
+
+// Schedule model for doctor availability
+model Schedule {
+  id                String              @id @default(uuid())
+  practiceId        String
+  practice          Practice            @relation(fields: [practiceId], references: [id])
+  doctorId          String
+  doctor            Doctor              @relation(fields: [doctorId], references: [id])
+  dayOfWeek         Int                 // 0-6 for Sunday-Saturday
+  startTime         String              // Format: "09:00"
+  endTime           String              // Format: "17:00"
+  isAvailable       Boolean             @default(true)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  // Breaks/unavailable times
+  timeOffs          TimeOff[]
+  
+  @@map("schedules")
+}
+
+// TimeOff model for specific dates when doctor is unavailable
+model TimeOff {
+  id                String              @id @default(uuid())
+  scheduleId        String
+  schedule          Schedule            @relation(fields: [scheduleId], references: [id])
+  startDate         DateTime
+  endDate           DateTime
+  reason            String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  @@map("time_offs")
+}
+
+// Notification model
+model Notification {
+  id                String              @id @default(uuid())
+  type              NotificationType
+  recipientEmail    String
+  subject           String
+  content           String              @db.Text
+  sent              Boolean             @default(false)
+  sentAt            DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  @@map("notifications")
+}
+
+enum NotificationType {
+  APPOINTMENT_CONFIRMATION
+  APPOINTMENT_REMINDER
+  APPOINTMENT_CANCELLATION
+  PASSWORD_RESET
+  WELCOME
+  CUSTOM
+}

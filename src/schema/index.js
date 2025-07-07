@@ -24,7 +24,7 @@ const {
 } = require("./doctor");
 
 const { loginAttempts } = require("./loginAttempt");
-const { practiceDoctors } = require("./practiceDoctor");
+const { admins } = require("./admin");
 
 module.exports = {
   users,
@@ -44,5 +44,5 @@ module.exports = {
   createDoctorData,
   updateDoctorData,
   loginAttempts,
-  practiceDoctors,
+  admins,
 };

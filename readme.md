@@ -1,231 +1,153 @@
-# Backend API - User Management System
+# Medibook Backend
 
-This backend provides a comprehensive user management system with role-based authentication for doctors and administrators.
+A Node.js backend for the Medibook medical appointment system.
 
 ## Features
 
-- **User Registration & Authentication**: Secure user registration and login with JWT tokens
-- **Role-Based Access Control**: Two roles - `doctor` (default) and `admin`
-- **Automatic Role Assignment**: Users with allowed admin emails automatically get admin role
-- **Secure Password Hashing**: Passwords are hashed using bcrypt
-- **NanoID Integration**: Unique user IDs generated using nanoid
-- **Protected Routes**: Authentication and authorization middleware
-- **Database Integration**: PostgreSQL with Drizzle ORM
+- User authentication and authorization
+- Session management with Redis
+- Email notifications with Nodemailer
+- Database management with PostgreSQL and Drizzle ORM
+- Admin panel with user management
+- Session monitoring and cleanup
 
-## User Schema
+## Prerequisites
 
-### User Table Structure
+- Node.js (v16 or higher)
+- PostgreSQL database
+- Redis server
+- SMTP email service (Gmail, Outlook, etc.)
 
-```sql
-- id: text (primary key, nanoid generated)
-- email: text (unique, not null)
-- password: text (hashed, not null)
-- firstName: text (not null)
-- lastName: text (not null)
-- role: enum ('doctor', 'admin') (default: 'doctor')
-- isActive: boolean (default: true)
-- emailVerified: boolean (default: false)
-- createdAt: timestamp (default: now)
-- updatedAt: timestamp (default: now)
+## Installation
+
+1. Clone the repository
+2. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+3. Set up environment variables:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Configure your `.env` file with the following variables:
+
+   - Database connection
+   - JWT secrets
+   - Redis connection
+   - Email configuration (see `email-config-example.txt`)
+
+4. Set up the database:
+
+   ```bash
+   npm run db:generate
+   npm run db:migrate
+   ```
+
+5. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+## Email Configuration
+
+The application uses Nodemailer for sending emails. Configure your email settings in the `.env` file:
+
+### Gmail Example:
+
+```
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_SECURE=false
+EMAIL_USER=your-gmail@gmail.com
+EMAIL_PASS=your-app-password
+EMAIL_FROM=Medibook <your-gmail@gmail.com>
 ```
 
-### Role Assignment Logic
+### Important Notes:
 
-- **Default Role**: All users get `doctor` role by default
-- **Admin Role**: Users with emails in `ALLOWED_ADMIN_EMAILS` array get `admin` role
-- **Admin Emails**: Currently set to `["admin@medibook.com", "superadmin@medibook.com"]`
-
-## Setup Instructions
-
-### 1. Install Dependencies
-
-```bash
-npm install
-```
-
-### 2. Environment Variables
-
-Create a `.env` file in the backend directory with the following variables:
-
-```env
-# Database Configuration
-DATABASE_URL=postgresql://username:password@localhost:5432/your_database_name
-
-# JWT Configuration
-JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
-
-# Server Configuration
-PORT=3000
-NODE_ENV=development
-```
-
-### 3. Database Setup
-
-1. Ensure PostgreSQL is running
-2. Create your database
-3. Update the `DATABASE_URL` in your `.env` file
-4. Run migrations (when implemented)
-
-### 4. Start the Server
-
-```bash
-npm run dev
-```
+- For Gmail, you need to use an "App Password" instead of your regular password
+- Enable 2-factor authentication on your Gmail account
+- Generate an app password in Google Account settings
+- See `email-config-example.txt` for other email provider configurations
 
 ## API Endpoints
 
-### Public Routes
+### Authentication
 
 - `POST /api/users/register` - Register a new user
-- `POST /api/users/login` - Login user
+- `POST /api/users/login` - User login
+- `POST /api/users/logout` - User logout
+- `POST /api/users/forgot-password` - Send password reset email
 
-### Protected Routes (Require Authentication)
+### User Management
 
-- `GET /api/users/profile/:id?` - Get user profile
-- `PUT /api/users/profile/:id?` - Update user profile
+- `GET /api/users/profile` - Get user profile
+- `PUT /api/users/profile` - Update user profile
+- `GET /api/users/all` - Get all users (admin only)
 
-### Admin Routes (Require Admin Role)
+### Session Management (Admin Only)
 
-- `GET /api/users/all` - Get all users
-- `DELETE /api/users/:id` - Delete user
+- `GET /api/users/sessions/stats` - Get session statistics
+- `GET /api/users/sessions/active` - Get active sessions
+- `POST /api/users/sessions/cleanup` - Cleanup all sessions
+- `POST /api/users/sessions/cleanup-expired` - Cleanup expired sessions
+- `POST /api/users/sessions/emergency-clear` - Emergency clear all sessions
+- `DELETE /api/users/sessions/:sessionToken` - Invalidate specific session
 
-## Request/Response Examples
+### System Status
 
-### Register User
+- `GET /api/users/status` - Get API status and service health
 
-```http
-POST /api/users/register
-Content-Type: application/json
+## Email Features
 
-{
-  "email": "doctor@example.com",
-  "password": "password123",
-  "firstName": "John",
-  "lastName": "Doe"
-}
+The application sends the following types of emails:
+
+1. **Welcome Emails** - Sent to new users upon registration
+2. **Password Reset Emails** - Sent when users request password reset
+3. **Email Verification** - For email verification (if implemented)
+4. **Security Alerts** - For suspicious login attempts
+5. **Custom Emails** - For admin notifications
+
+## Development
+
+### Running Tests
+
+```bash
+npm test
 ```
 
-**Response:**
+### Database Migrations
 
-```json
-{
-  "success": true,
-  "message": "User registered successfully",
-  "data": {
-    "user": {
-      "id": "abc123...",
-      "email": "doctor@example.com",
-      "firstName": "John",
-      "lastName": "Doe",
-      "role": "doctor",
-      "isActive": true,
-      "emailVerified": false,
-      "createdAt": "2024-01-01T00:00:00.000Z",
-      "updatedAt": "2024-01-01T00:00:00.000Z"
-    },
-    "role": "doctor",
-    "isAdmin": false,
-    "token": "jwt_token_here"
-  }
-}
+```bash
+npm run db:generate  # Generate new migration
+npm run db:migrate   # Run migrations
+npm run db:studio    # Open Drizzle Studio
 ```
 
-### Login User
+### Session Management
 
-```http
-POST /api/users/login
-Content-Type: application/json
+The application includes comprehensive session management:
 
-{
-  "email": "admin@medibook.com",
-  "password": "password123"
-}
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "message": "Login successful",
-  "data": {
-    "user": {
-      "id": "abc123...",
-      "email": "admin@medibook.com",
-      "firstName": "Admin",
-      "lastName": "User",
-      "role": "admin",
-      "isActive": true,
-      "emailVerified": false,
-      "createdAt": "2024-01-01T00:00:00.000Z",
-      "updatedAt": "2024-01-01T00:00:00.000Z"
-    },
-    "role": "admin",
-    "isAdmin": true,
-    "token": "jwt_token_here"
-  }
-}
-```
-
-### Protected Route Example
-
-```http
-GET /api/users/profile
-Authorization: Bearer jwt_token_here
-```
-
-## Authentication
-
-### JWT Token Usage
-
-Include the JWT token in the Authorization header for protected routes:
-
-```
-Authorization: Bearer your_jwt_token_here
-```
-
-### Role-Based Access
-
-- **Doctor Role**: Can access doctor-specific features
-- **Admin Role**: Can access all features including user management
+- **Automatic Cleanup**: Expired sessions are automatically cleaned up
+- **Manual Cleanup**: Admins can manually cleanup sessions
+- **Emergency Clear**: For security breaches, all sessions can be cleared
+- **Individual Session Invalidation**: Admins can invalidate specific sessions
+- **Session Monitoring**: Real-time session statistics and monitoring
 
 ## Security Features
 
-- **Password Hashing**: All passwords are hashed using bcrypt
-- **JWT Authentication**: Secure token-based authentication
-- **Role-Based Authorization**: Access control based on user roles
-- **Input Validation**: Comprehensive validation for all inputs
-- **SQL Injection Protection**: Using Drizzle ORM for safe database queries
+- JWT-based authentication
+- Session-based authentication with Redis
+- Password hashing with bcrypt
+- Email verification system
+- Security alerts for suspicious activity
+- Admin-only session management
+- Emergency session clearing for security breaches
 
-## Customization
+## Environment Variables
 
-### Adding Admin Emails
-
-To add more admin emails, modify the `ALLOWED_ADMIN_EMAILS` array in:
-
-- `src/schema/user.js`
-- `src/config/config.js`
-
-### Changing Default Role
-
-To change the default role, modify the `default("doctor")` in the user schema.
-
-### Password Requirements
-
-To modify password requirements, update the validation in `src/controllers/userController.js`.
-
-## Dependencies
-
-- **express**: Web framework
-- **drizzle-orm**: Database ORM
-- **postgres**: PostgreSQL client
-- **bcryptjs**: Password hashing
-- **jsonwebtoken**: JWT authentication
-- **nanoid**: Unique ID generation
-- **cors**: Cross-origin resource sharing
-- **dotenv**: Environment variable management
-
-.listen(PORT, async () => {
-console.log(`🚀 Server is running on port ${PORT}`);
-console.log(`📝 Environment: ${process.env.NODE_ENV || "development"}`);
-console.log(`🌐 Server URL: http://localhost:${PORT}`);
+See `email-config-example.txt` for complete email configuration examples and `.env.example` for all required environment variables.

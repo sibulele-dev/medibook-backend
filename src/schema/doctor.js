@@ -25,6 +25,11 @@ const doctors = pgTable("doctors", {
   licenseNumber: text("license_number"),
   experience: text("experience"),
   bio: text("bio"),
+  address: text("address"),
+  city: text("city"),
+  state: text("state"),
+  zip: text("zip"),
+  country: text("country"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -100,6 +105,11 @@ const createDoctorData = (data) => {
     licenseNumber: data.licenseNumber?.trim() || null,
     experience: data.experience?.trim() || null,
     bio: data.bio?.trim() || null,
+    address: data.address?.trim() || "",
+    city: data.city?.trim() || "",
+    state: data.state?.trim() || "",
+    zip: data.zip?.trim() || "",
+    country: data.country?.trim() || "",
     isActive: data.isActive !== undefined ? data.isActive : true,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -120,6 +130,13 @@ const updateDoctorData = (data) => {
   if (data.experience !== undefined)
     updateData.experience = data.experience?.trim() || null;
   if (data.bio !== undefined) updateData.bio = data.bio?.trim() || null;
+  if (data.address !== undefined)
+    updateData.address = data.address?.trim() || "";
+  if (data.city !== undefined) updateData.city = data.city?.trim() || "";
+  if (data.state !== undefined) updateData.state = data.state?.trim() || "";
+  if (data.zip !== undefined) updateData.zip = data.zip?.trim() || "";
+  if (data.country !== undefined)
+    updateData.country = data.country?.trim() || "";
   if (data.isActive !== undefined) updateData.isActive = data.isActive;
 
   updateData.updatedAt = new Date();

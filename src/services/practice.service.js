@@ -44,13 +44,13 @@ class PracticeService {
         .limit(limit)
         .offset(offset);
 
-      // Get total count
+      // Get total count using sql template
       const totalResult = await db
-        .select({ count: count() })
+        .select({ count: sql`count(*)` })
         .from(practices)
         .where(whereClause);
 
-      const total = totalResult[0]?.count || 0;
+      const total = Number(totalResult[0]?.count) || 0;
 
       return {
         practices: practicesList,
@@ -175,26 +175,26 @@ class PracticeService {
       const [totalPractices, activePractices, totalDoctors] = await Promise.all(
         [
           // Total practices
-          db.select({ count: count() }).from(practices),
+          db.select({ count: sql`count(*)` }).from(practices),
 
           // Active practices
           db
-            .select({ count: count() })
+            .select({ count: sql`count(*)` })
             .from(practices)
             .where(eq(practices.status, "active")),
 
           // Total doctors (from users table)
           db
-            .select({ count: count() })
+            .select({ count: sql`count(*)` })
             .from(users)
             .where(eq(users.role, "doctor")),
         ]
       );
 
       return {
-        totalPractices: totalPractices[0]?.count || 0,
-        activePractices: activePractices[0]?.count || 0,
-        totalDoctors: totalDoctors[0]?.count || 0,
+        totalPractices: Number(totalPractices[0]?.count) || 0,
+        activePractices: Number(activePractices[0]?.count) || 0,
+        totalDoctors: Number(totalDoctors[0]?.count) || 0,
         totalAppointments: 0, // Placeholder - would need appointments table
       };
     } catch (error) {

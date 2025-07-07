@@ -13,6 +13,8 @@ const {
   isAdminEmail,
 } = require("../schema");
 const config = require("../config/config");
+const { doctors, createDoctorData } = require("../schema/doctor");
+const { admins } = require("../schema/admin");
 
 class UserService {
   constructor() {
@@ -159,6 +161,33 @@ class UserService {
           .insert(users)
           .values(newUser)
           .returning();
+
+        // Add to doctors table if role is doctor
+        if (role === "doctor") {
+          const doctorData = createDoctorData({
+            userId: insertedUser.id,
+            specialization: userData.specialization || "General Practice",
+            phoneNumber: userData.phoneNumber || "",
+            practiceId: userData.practiceId || "",
+            licenseNumber: userData.licenseNumber || null,
+            experience: userData.experience || null,
+            bio: userData.bio || null,
+            isActive: true,
+          });
+          await tx.insert(doctors).values(doctorData);
+        }
+
+        // Add to admins table if role is admin
+        if (role === "admin") {
+          await tx.insert(admins).values({
+            id: require("nanoid").nanoid(30),
+            userId: insertedUser.id,
+            department: userData.department || null,
+            permissions: userData.permissions || null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+        }
 
         // Log user creation for audit (consider using proper logging service)
         console.log(
@@ -729,13 +758,9 @@ class UserService {
         updatedAt: new Date(),
       };
 
-      // If suspending/deactivating, invalidate sessions
+      // If suspending/deactivating, invalidate Redis sessions only
       if (status !== "active") {
-        await this.invalidateAllUserSessions(userId);
-        await db
-          .update(userSessions)
-          .set({ isActive: false, endedAt: new Date() })
-          .where(eq(userSessions.userId, userId));
+        await this.invalidateAllUserRedisSessions(userId);
       }
 
       const [updatedUser] = await db
@@ -785,13 +810,9 @@ class UserService {
         updatedAt: new Date(),
       };
 
-      // If deactivating, invalidate all sessions
+      // If deactivating, invalidate Redis sessions only
       if (!newIsActive) {
-        await this.invalidateAllUserSessions(userId);
-        await db
-          .update(userSessions)
-          .set({ isActive: false, endedAt: new Date() })
-          .where(eq(userSessions.userId, userId));
+        await this.invalidateAllUserRedisSessions(userId);
       }
 
       const [updatedUser] = await db
@@ -811,22 +832,6 @@ class UserService {
     } catch (error) {
       console.error("Error toggling user status:", error);
       throw error;
-    }
-  }
-
-  // Helper method to invalidate all refresh tokens for a user
-  async invalidateAllUserRefreshTokens(userId) {
-    try {
-      await db
-        .update(refreshTokens)
-        .set({
-          isRevoked: true,
-          revokedAt: new Date(),
-        })
-        .where(eq(refreshTokens.userId, userId));
-    } catch (error) {
-      console.error("Error invalidating refresh tokens:", error);
-      // Non-critical, don't throw
     }
   }
 
@@ -850,7 +855,7 @@ class UserService {
       if (sessionTokensToDelete.length > 0) {
         await redisClient.del(...sessionTokensToDelete);
         console.log(
-          `Deleted ${sessionTokensToDelete.length} Redis sessions for user: ${userId}`
+          `Deleted ${sessionTokensToDelete.length} Redis sessions for user`
         );
       }
     } catch (error) {
@@ -859,16 +864,14 @@ class UserService {
     }
   }
 
-  // Enhanced method to invalidate all user sessions (both refresh tokens and Redis sessions)
+  // Enhanced method to invalidate all user sessions (Redis sessions only)
   async invalidateAllUserSessions(userId) {
     try {
-      await Promise.all([
-        this.invalidateAllUserRefreshTokens(userId),
-        this.invalidateAllUserRedisSessions(userId),
-      ]);
-      console.log(`All sessions invalidated for user: ${userId}`);
+      // Only clear Redis sessions to avoid Drizzle ORM errors
+      await this.invalidateAllUserRedisSessions(userId);
+      console.log("All Redis sessions invalidated for user");
     } catch (error) {
-      console.error("Error invalidating all user sessions:", error);
+      console.error("Error invalidating user sessions:", error);
       // Non-critical, don't throw
     }
   }
@@ -994,6 +997,55 @@ class UserService {
     }
   }
 
+  // Cleanup all sessions except the specified session (for admin cleanup)
+  async cleanupAllSessionsExcept(preserveSessionToken) {
+    try {
+      const keys = await redisClient.keys("*");
+      let cleanedCount = 0;
+      const sessionsToDelete = [];
+
+      // Filter out the session to preserve
+      for (const key of keys) {
+        if (key !== preserveSessionToken) {
+          sessionsToDelete.push(key);
+        }
+      }
+
+      // Delete all sessions except the preserved one
+      if (sessionsToDelete.length > 0) {
+        await redisClient.del(...sessionsToDelete);
+        cleanedCount = sessionsToDelete.length;
+        console.log(
+          `Cleaned up ${cleanedCount} sessions from Redis (preserved admin session)`
+        );
+      }
+
+      return cleanedCount;
+    } catch (error) {
+      console.error("Error cleaning up all sessions except admin:", error);
+      return 0;
+    }
+  }
+
+  // Cleanup all sessions (for testing or emergency)
+  async cleanupAllSessions() {
+    try {
+      const keys = await redisClient.keys("*");
+      let cleanedCount = 0;
+
+      if (keys.length > 0) {
+        await redisClient.del(...keys);
+        cleanedCount = keys.length;
+        console.log(`Cleaned up ALL ${cleanedCount} sessions from Redis`);
+      }
+
+      return cleanedCount;
+    } catch (error) {
+      console.error("Error cleaning up all sessions:", error);
+      return 0;
+    }
+  }
+
   // Cleanup expired sessions from Redis
   async cleanupExpiredSessions() {
     try {
@@ -1003,17 +1055,25 @@ class UserService {
       for (const key of keys) {
         // Check if the key has an expiry time set
         const ttl = await redisClient.ttl(key);
-        if (ttl === -1) {
-          // Key has no expiry, we can set one or remove it
-          // For session tokens, we'll remove them if they're older than 24 hours
-          const value = await redisClient.get(key);
-          if (value) {
-            // This is a simplified approach - in production you might want to store
-            // creation timestamps with the session data
-            await redisClient.del(key);
-            cleanedCount++;
-          }
+
+        // If TTL is -2, the key doesn't exist (already expired)
+        // If TTL is -1, the key has no expiry (remove it for security)
+        // If TTL is 0 or positive, the key is still valid
+        if (ttl === -2) {
+          // Key doesn't exist, skip
+          continue;
+        } else if (ttl === -1) {
+          // Key has no expiry, remove it for security
+          await redisClient.del(key);
+          cleanedCount++;
+          console.log("Removed session with no expiry");
+        } else if (ttl === 0) {
+          // Key has expired (TTL = 0), remove it
+          await redisClient.del(key);
+          cleanedCount++;
+          console.log("Removed expired session");
         }
+        // If TTL > 0, the session is still valid, keep it
       }
 
       console.log(`Cleaned up ${cleanedCount} expired sessions from Redis`);
@@ -1052,6 +1112,188 @@ class UserService {
         timestamp: new Date().toISOString(),
         error: error.message,
       };
+    }
+  }
+
+  // Test database connection
+  async testDatabaseConnection() {
+    try {
+      const result = await db.select({ connected: sql`1` });
+      return result && result[0] && result[0].connected === 1;
+    } catch (error) {
+      console.error("Database connection test failed:", error);
+      throw error;
+    }
+  }
+
+  // Get active sessions and users for session management
+  async getActiveSessionsAndUsers() {
+    try {
+      // Get all Redis session keys
+      const keys = await redisClient.keys("*");
+      const sessions = [];
+      const userIds = new Set();
+
+      // Process each session
+      for (const key of keys) {
+        const userId = await redisClient.get(key);
+        if (userId) {
+          userIds.add(userId);
+          sessions.push({
+            id: key,
+            userId: userId,
+            isActive: true,
+            loginTime: new Date().toISOString(), // Approximate since we don't store timestamps
+          });
+        }
+      }
+
+      // Get user details for active users
+      const users = [];
+      for (const userId of userIds) {
+        try {
+          const user = await this.getUserById(userId);
+          if (user) {
+            users.push({
+              id: user.id,
+              email: user.email,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              role: user.role,
+              lastLoginAt: user.lastLoginAt || new Date().toISOString(),
+            });
+          }
+        } catch (error) {
+          console.error(`Error getting user ${userId}:`, error);
+        }
+      }
+
+      // Add user email to sessions
+      const sessionsWithUserEmail = sessions.map((session) => {
+        const user = users.find((u) => u.id === session.userId);
+        return {
+          ...session,
+          userEmail: user?.email || "Unknown",
+        };
+      });
+
+      return {
+        sessions: sessionsWithUserEmail,
+        users: users,
+        totalSessions: sessions.length,
+        totalUsers: users.length,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      console.error("Error getting active sessions and users:", error);
+      return {
+        sessions: [],
+        users: [],
+        totalSessions: 0,
+        totalUsers: 0,
+        timestamp: new Date().toISOString(),
+        error: error.message,
+      };
+    }
+  }
+
+  // Get detailed session information for debugging
+  async getSessionDetails() {
+    try {
+      const keys = await redisClient.keys("*");
+      const sessionDetails = [];
+
+      for (const key of keys) {
+        const userId = await redisClient.get(key);
+        const ttl = await redisClient.ttl(key);
+
+        if (userId) {
+          sessionDetails.push({
+            sessionToken: key,
+            userId: userId,
+            ttl: ttl,
+            expiresAt:
+              ttl > 0 ? new Date(Date.now() + ttl * 1000).toISOString() : null,
+            isExpired: ttl <= 0,
+            createdAt: new Date().toISOString(), // Approximate
+          });
+        }
+      }
+
+      return {
+        totalSessions: sessionDetails.length,
+        sessions: sessionDetails,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      console.error("Error getting session details:", error);
+      return {
+        totalSessions: 0,
+        sessions: [],
+        timestamp: new Date().toISOString(),
+        error: error.message,
+      };
+    }
+  }
+
+  // Emergency: Clear all sessions (for security breaches)
+  async clearAllSessions() {
+    try {
+      console.log("EMERGENCY: Clearing all sessions due to security breach");
+
+      // Get initial session count
+      const initialKeys = await redisClient.keys("*");
+      const initialCount = initialKeys.length;
+      console.log(`Found ${initialCount} sessions to clear`);
+
+      let clearedCount = 0;
+
+      // Clear all Redis sessions
+      try {
+        if (initialKeys.length > 0) {
+          await redisClient.del(...initialKeys);
+          clearedCount = initialKeys.length;
+          console.log(`Cleared ${clearedCount} Redis sessions`);
+        }
+      } catch (redisError) {
+        console.error("Error clearing Redis sessions:", redisError);
+        throw redisError;
+      }
+
+      // Verify all sessions are cleared
+      const remainingKeys = await redisClient.keys("*");
+      const remainingCount = remainingKeys.length;
+
+      if (remainingCount > 0) {
+        console.error(
+          `WARNING: ${remainingCount} sessions still remain after cleanup`
+        );
+        // Try to clear remaining sessions
+        await redisClient.del(...remainingKeys);
+        console.log(`Cleared additional ${remainingCount} remaining sessions`);
+        clearedCount += remainingCount;
+      }
+
+      // Final verification
+      const finalKeys = await redisClient.keys("*");
+      const finalCount = finalKeys.length;
+
+      console.log(
+        `EMERGENCY: Cleared ${clearedCount} Redis sessions due to security breach. Final count: ${finalCount} sessions.`
+      );
+
+      return {
+        success: true,
+        clearedRedisSessions: clearedCount,
+        initialSessions: initialCount,
+        remainingSessions: finalCount,
+        allCleared: finalCount === 0,
+        message: "All sessions cleared due to security breach",
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      console.error("Error clearing all sessions:", error);
+      throw error;
     }
   }
 }

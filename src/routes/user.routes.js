@@ -14,6 +14,7 @@ const router = express.Router();
 // Public routes
 router.post("/register", userController.register);
 router.post("/login", userController.login);
+router.post("/forgot-password", userController.sendPasswordResetEmail);
 router.get("/check-email", userController.checkEmailRegistration);
 
 // Protected routes (require authentication)
@@ -63,6 +64,24 @@ router.get(
   requireAdmin,
   userController.getSessionStats
 );
+router.get(
+  "/sessions/active",
+  authenticateSession,
+  requireAdmin,
+  userController.getActiveSessions
+);
+router.get(
+  "/sessions/details",
+  authenticateSession,
+  requireAdmin,
+  userController.getSessionDetails
+);
+router.post(
+  "/sessions/cleanup-expired",
+  authenticateSession,
+  requireAdmin,
+  userController.cleanupExpiredSessions
+);
 router.post(
   "/sessions/cleanup",
   authenticateSession,
@@ -70,11 +89,22 @@ router.post(
   userController.cleanupSessions
 );
 router.post(
+  "/sessions/emergency-clear",
+  authenticateSession,
+  requireAdmin,
+  userController.emergencyClearAllSessions
+);
+
+// Force logout specific user (admin only)
+router.post(
   "/:userId/force-logout",
   authenticateSession,
   requireAdmin,
   userController.forceLogoutUser
 );
+
+// API Status endpoint (public)
+router.get("/status", userController.getApiStatus);
 
 // Admin email management routes
 router.get(
@@ -90,6 +120,14 @@ router.post(
   authenticateSession,
   requireAdmin,
   userController.registerDoctor
+);
+
+// Admin session management routes (admin only)
+router.delete(
+  "/sessions/:sessionToken",
+  authenticateSession,
+  requireAdmin,
+  userController.invalidateSession
 );
 
 module.exports = router;

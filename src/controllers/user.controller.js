@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const userService = require("../services/user.service");
+const emailService = require("../services/email.service");
 const config = require("../config/config");
 const redisClient = require("../config/redis");
 const { v4: uuidv4 } = require("uuid");
@@ -54,6 +55,17 @@ class UserController {
       }
 
       const newUser = await userService.registerUser(userData);
+
+      // Send welcome email (non-blocking)
+      try {
+        await emailService.sendWelcomeEmail(
+          newUser.email,
+          `${newUser.firstName} ${newUser.lastName}`
+        );
+      } catch (emailError) {
+        console.error("Failed to send welcome email:", emailError);
+        // Don't fail registration if email fails
+      }
 
       // Generate JWT token
       const token = generateToken(newUser.id);
@@ -141,6 +153,10 @@ class UserController {
         });
       }
 
+      // Clear any existing sessions for this user before creating a new one
+      await userService.invalidateAllUserRedisSessions(user.id);
+      console.log(`Cleared existing sessions for user: ${user.email}`);
+
       // Return user data without password
       const { password: _, ...userWithoutPassword } = user;
 
@@ -155,6 +171,8 @@ class UserController {
         sameSite: "Strict",
         maxAge: 24 * 60 * 60 * 1000,
       });
+
+      console.log(`New session created for user: ${user.email}`);
 
       res.status(200).json({
         success: true,
@@ -539,6 +557,7 @@ class UserController {
       if (sessionToken) {
         await redisClient.del(sessionToken);
         res.clearCookie("sessionToken");
+        console.log("User logged out successfully");
       }
       res.status(200).json({
         success: true,
@@ -578,8 +597,126 @@ class UserController {
     }
   }
 
-  // Admin: Cleanup expired sessions
+  // API Status endpoint (public)
+  async getApiStatus(req, res) {
+    try {
+      const startTime = Date.now();
+
+      // Check database connection
+      let dbStatus = "unknown";
+      try {
+        await userService.testDatabaseConnection();
+        dbStatus = "connected";
+      } catch (error) {
+        console.error("Database connection test failed:", error);
+        dbStatus = "disconnected";
+      }
+
+      // Check Redis connection
+      let redisStatus = "unknown";
+      try {
+        await redisClient.ping();
+        redisStatus = "connected";
+      } catch (error) {
+        console.error("Redis connection test failed:", error);
+        redisStatus = "disconnected";
+      }
+
+      // Get session statistics (if Redis is connected)
+      let sessionStats = null;
+      if (redisStatus === "connected") {
+        try {
+          sessionStats = await userService.getSessionStats();
+        } catch (error) {
+          console.error("Failed to get session stats:", error);
+        }
+      }
+
+      const responseTime = Date.now() - startTime;
+
+      res.status(200).json({
+        success: true,
+        data: {
+          status: "operational",
+          timestamp: new Date().toISOString(),
+          responseTime: `${responseTime}ms`,
+          services: {
+            database: {
+              status: dbStatus,
+              type: "PostgreSQL with Drizzle ORM",
+            },
+            redis: {
+              status: redisStatus,
+              type: "Session Storage",
+            },
+          },
+          sessions: sessionStats,
+          environment: process.env.NODE_ENV || "development",
+          version: "1.0.0",
+        },
+      });
+    } catch (error) {
+      console.error("API status error:", error);
+      res.status(500).json({
+        success: false,
+        status: "error",
+        message: "Internal server error",
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+
+  // Admin: Cleanup all sessions (logs out all users except current admin)
   async cleanupSessions(req, res) {
+    try {
+      // Check if user is admin
+      if (req.user?.role !== "admin") {
+        return res.status(403).json({
+          success: false,
+          message: "Access denied. Admin privileges required.",
+        });
+      }
+
+      // Get session stats before cleanup for logging
+      const statsBefore = await userService.getSessionStats();
+
+      // Get current admin's session token
+      const currentSessionToken = req.cookies.sessionToken;
+
+      // Clear ALL sessions from Redis EXCEPT the current admin's session
+      const cleanedCount = await userService.cleanupAllSessionsExcept(
+        currentSessionToken
+      );
+
+      // Log the action
+      console.log(
+        `ADMIN SESSION CLEANUP: ${cleanedCount} sessions cleared by admin: ${
+          req.user.email
+        } at ${new Date().toISOString()}. Admin session preserved.`
+      );
+
+      res.status(200).json({
+        success: true,
+        message: `Cleaned up ${cleanedCount} sessions. All other users have been logged out.`,
+        data: {
+          cleanedCount,
+          statsBefore,
+          timestamp: new Date().toISOString(),
+          clearedBy: req.user.email,
+          adminSessionPreserved: true,
+        },
+      });
+    } catch (error) {
+      console.error("Cleanup sessions error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
+    }
+  }
+
+  // Admin: Cleanup expired sessions only (keeps active sessions)
+  async cleanupExpiredSessions(req, res) {
     try {
       // Check if user is admin
       if (req.user?.role !== "admin") {
@@ -596,7 +733,94 @@ class UserController {
         data: { cleanedCount },
       });
     } catch (error) {
-      console.error("Cleanup sessions error:", error);
+      console.error("Cleanup expired sessions error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
+    }
+  }
+
+  // Admin: Emergency clear all sessions (for security breaches)
+  async emergencyClearAllSessions(req, res) {
+    try {
+      // Check if user is admin
+      if (req.user?.role !== "admin") {
+        return res.status(403).json({
+          success: false,
+          message: "Access denied. Admin privileges required.",
+        });
+      }
+
+      const { password } = req.body;
+      if (!password) {
+        return res.status(400).json({
+          success: false,
+          message: "Admin password is required for emergency session clear.",
+        });
+      }
+
+      // Verify admin password
+      const adminUser = await userService.getUserByEmail(req.user.email, true);
+      if (!adminUser) {
+        return res.status(404).json({
+          success: false,
+          message: "Admin user not found.",
+        });
+      }
+
+      const isPasswordValid = await userService.verifyPassword(
+        password,
+        adminUser.password
+      );
+      if (!isPasswordValid) {
+        return res.status(401).json({
+          success: false,
+          message: "Invalid admin password.",
+        });
+      }
+
+      // Get session stats before cleanup
+      const statsBefore = await userService.getSessionStats();
+
+      // Clear all sessions (including admin's own session)
+      const result = await userService.clearAllSessions();
+
+      // Verify all sessions are cleared
+      const statsAfter = await userService.getSessionStats();
+
+      // Log the emergency action
+      console.log(
+        `EMERGENCY: All sessions cleared by admin: ${
+          req.user.email
+        } at ${new Date().toISOString()}. Before: ${
+          statsBefore.totalSessions
+        } sessions, After: ${statsAfter.totalSessions} sessions.`
+      );
+
+      // Clear the current session cookie immediately
+      res.clearCookie("sessionToken");
+
+      res.status(200).json({
+        success: true,
+        message:
+          "EMERGENCY: All sessions cleared due to security breach. You will be logged out immediately.",
+        data: {
+          ...result,
+          statsBefore,
+          statsAfter,
+          verification: {
+            allSessionsCleared: statsAfter.totalSessions === 0,
+            totalSessionsAfter: statsAfter.totalSessions,
+            uniqueUsersAfter: statsAfter.uniqueUsers,
+          },
+        },
+        clearedBy: req.user.email,
+        timestamp: new Date().toISOString(),
+        logoutRequired: true,
+      });
+    } catch (error) {
+      console.error("Emergency clear sessions error:", error);
       res.status(500).json({
         success: false,
         message: "Internal server error",
@@ -771,6 +995,17 @@ class UserController {
         req.user.id
       );
 
+      // Send welcome email (non-blocking)
+      try {
+        await emailService.sendWelcomeEmail(
+          newDoctor.email,
+          `${newDoctor.firstName} ${newDoctor.lastName}`
+        );
+      } catch (emailError) {
+        console.error("Failed to send welcome email:", emailError);
+        // Don't fail registration if email fails
+      }
+
       res.status(201).json({
         success: true,
         message: "Doctor registered successfully",
@@ -802,6 +1037,145 @@ class UserController {
           success: false,
           message: error.message || "Internal server error",
         });
+    }
+  }
+
+  // Admin: Get active sessions and users
+  async getActiveSessions(req, res) {
+    try {
+      // Check if user is admin
+      if (req.user?.role !== "admin") {
+        return res.status(403).json({
+          success: false,
+          message: "Access denied. Admin privileges required.",
+        });
+      }
+
+      const activeData = await userService.getActiveSessionsAndUsers();
+      res.status(200).json({
+        success: true,
+        data: activeData,
+      });
+    } catch (error) {
+      console.error("Get active sessions error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
+    }
+  }
+
+  // Admin: Get detailed session information (for debugging)
+  async getSessionDetails(req, res) {
+    try {
+      // Check if user is admin
+      if (req.user?.role !== "admin") {
+        return res.status(403).json({
+          success: false,
+          message: "Access denied. Admin privileges required.",
+        });
+      }
+
+      const sessionDetails = await userService.getSessionDetails();
+      res.status(200).json({
+        success: true,
+        data: sessionDetails,
+      });
+    } catch (error) {
+      console.error("Get session details error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
+    }
+  }
+
+  // Admin: Invalidate a specific session by session token
+  async invalidateSession(req, res) {
+    try {
+      if (req.user?.role !== "admin") {
+        return res.status(403).json({
+          success: false,
+          message: "Access denied. Admin privileges required.",
+        });
+      }
+      const { sessionToken } = req.params;
+      if (!sessionToken) {
+        return res.status(400).json({
+          success: false,
+          message: "Session token is required",
+        });
+      }
+      await redisClient.del(sessionToken);
+      res.status(200).json({
+        success: true,
+        message: "Session invalidated successfully",
+        sessionToken,
+      });
+    } catch (error) {
+      console.error("Invalidate session error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
+    }
+  }
+
+  // Send password reset email
+  async sendPasswordResetEmail(req, res) {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({
+          success: false,
+          message: "Email is required",
+        });
+      }
+
+      // Get user by email
+      const user = await userService.getUserByEmail(email);
+      if (!user) {
+        // Don't reveal if user exists or not for security
+        return res.status(200).json({
+          success: true,
+          message: "If the email exists, a password reset link has been sent.",
+        });
+      }
+
+      // Generate password reset token
+      const resetToken = require("crypto").randomBytes(32).toString("hex");
+      const resetTokenExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      // Store reset token in database (you'll need to add this to your schema)
+      // For now, we'll just send the email
+
+      // Send password reset email
+      try {
+        await emailService.sendPasswordResetEmail(
+          user.email,
+          `${user.firstName} ${user.lastName}`,
+          resetToken
+        );
+      } catch (emailError) {
+        console.error("Failed to send password reset email:", emailError);
+        return res.status(500).json({
+          success: false,
+          message:
+            "Failed to send password reset email. Please try again later.",
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "If the email exists, a password reset link has been sent.",
+      });
+    } catch (error) {
+      console.error("Send password reset email error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
     }
   }
 }

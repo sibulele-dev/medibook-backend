@@ -11,6 +11,9 @@ const practiceRoutes = require("./routes/practice.routes");
 // Import session cleanup utility
 const sessionCleanup = require("./utils/sessionCleanup");
 
+// Import email configuration
+const { verifyConnection: verifyEmailConnection } = require("./config/email");
+
 const app = express();
 const PORT = process.env.PORT;
 
@@ -102,6 +105,20 @@ const server = app.listen(PORT, async () => {
   console.log(
     `🧹 Session cleanup started (every ${cleanupInterval / 1000 / 60} minutes)`
   );
+
+  // Test email connection
+  try {
+    const emailConnected = await verifyEmailConnection();
+    if (emailConnected) {
+      console.log("📧 Email: Nodemailer (connected)");
+    } else {
+      console.log("⚠️  Email: Nodemailer (connection failed)");
+    }
+  } catch (error) {
+    console.log("❌ Email: Nodemailer (connection failed)");
+    console.log("   → Check your EMAIL_* environment variables");
+    console.log("   → See email-config-example.txt for configuration");
+  }
 });
 
 // Graceful shutdown handling

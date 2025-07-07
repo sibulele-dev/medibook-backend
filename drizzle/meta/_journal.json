@@ -22,6 +22,27 @@
       "when": 1751130923161,
       "tag": "0002_worthless_mad_thinker",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1751395001014,
+      "tag": "0003_flashy_iceman",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1751395718939,
+      "tag": "0004_slimy_junta",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1751480000989,
+      "tag": "0005_sweet_shadow_king",
+      "breakpoints": true
     }
   ]
 }

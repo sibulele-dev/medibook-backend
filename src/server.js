@@ -20,7 +20,10 @@ const PORT = process.env.PORT;
 // Middleware
 app.use(
   cors({
-    origin: "http://localhost:5173", // Change this to your frontend URL/port if different
+    origin:
+      process.env.NODE_ENV === "production"
+        ? [process.env.FRONTEND_URL, "https://your-frontend-app.onrender.com"] // Add your actual frontend URL
+        : "http://localhost:5173",
     credentials: true,
   })
 );

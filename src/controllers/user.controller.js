@@ -115,12 +115,19 @@ class UserController {
   async login(req, res) {
     try {
       const { email, password } = req.body;
+      const deviceId = req.headers["x-device-id"];
 
       // Validate required fields
       if (!email || !password) {
         return res.status(400).json({
           success: false,
           message: "Email and password are required",
+        });
+      }
+      if (!deviceId) {
+        return res.status(400).json({
+          success: false,
+          message: "Device ID is required",
         });
       }
 
@@ -153,16 +160,16 @@ class UserController {
         });
       }
 
-      // Clear any existing sessions for this user before creating a new one
-      await userService.invalidateAllUserRedisSessions(user.id);
-      console.log(`Cleared existing sessions for user: ${user.email}`);
+      // Only clear the session for this device
+      await userService.invalidateUserDeviceSession(user.id, deviceId);
+      console.log(`Cleared existing session for user: ${user.email} on device: ${deviceId}`);
 
       // Return user data without password
       const { password: _, ...userWithoutPassword } = user;
 
       // Generate session token and store in Redis
       const sessionToken = uuidv4();
-      await redisClient.set(sessionToken, user.id, { EX: 60 * 60 * 24 }); // 1 day expiry
+      await redisClient.set(`session:${user.id}:${deviceId}`, sessionToken, { EX: 60 * 60 * 24 }); // 1 day expiry
 
       // Set HTTP-only cookie
       res.cookie("sessionToken", sessionToken, {
@@ -172,7 +179,7 @@ class UserController {
         maxAge: 24 * 60 * 60 * 1000,
       });
 
-      console.log(`New session created for user: ${user.email}`);
+      console.log(`New session created for user: ${user.email} on device: ${deviceId}`);
 
       res.status(200).json({
         success: true,

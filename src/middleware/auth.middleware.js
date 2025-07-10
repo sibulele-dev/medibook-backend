@@ -364,6 +364,7 @@ const validateApiKey = async (apiKey) => {
 const authenticateSession = async (req, res, next) => {
   try {
     const sessionToken = req.cookies.sessionToken;
+    const deviceId = req.headers["x-device-id"];
     if (!sessionToken) {
       return res.status(401).json({
         success: false,
@@ -371,15 +372,33 @@ const authenticateSession = async (req, res, next) => {
         code: "MISSING_SESSION_TOKEN",
       });
     }
-    const userId = await redisClient.get(sessionToken);
-    if (!userId) {
+    if (!deviceId) {
+      return res.status(401).json({
+        success: false,
+        message: "Device ID required",
+        code: "MISSING_DEVICE_ID",
+      });
+    }
+    const keys = await redisClient.keys(`session:*:${deviceId}`);
+    let foundUserId = null;
+    for (const key of keys) {
+      const value = await redisClient.get(key);
+      if (value === sessionToken) {
+        const parts = key.split(":");
+        if (parts.length === 3) {
+          foundUserId = parts[1];
+          break;
+        }
+      }
+    }
+    if (!foundUserId) {
       return res.status(401).json({
         success: false,
         message: "Invalid or expired session",
         code: "INVALID_SESSION",
       });
     }
-    const user = await userService.getUserById(userId);
+    const user = await userService.getUserById(foundUserId);
     if (!user || !user.isActive) {
       return res.status(401).json({
         success: false,
@@ -387,10 +406,6 @@ const authenticateSession = async (req, res, next) => {
         code: "USER_NOT_FOUND",
       });
     }
-
-    // Note: Removed the database session check that was causing Drizzle ORM errors
-    // The Redis session check above is sufficient for session validation
-
     req.user = user;
     next();
   } catch (error) {

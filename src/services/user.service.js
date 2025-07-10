@@ -1296,6 +1296,20 @@ class UserService {
       throw error;
     }
   }
+
+  // Invalidate session for a specific user and device
+  async invalidateUserDeviceSession(userId, deviceId) {
+    try {
+      const key = `session:${userId}:${deviceId}`;
+      await redisClient.del(key);
+      console.log(
+        `Deleted Redis session for user ${userId} on device ${deviceId}`
+      );
+    } catch (error) {
+      console.error("Error invalidating device session:", error);
+      // Non-critical, don't throw
+    }
+  }
 }
 
 module.exports = new UserService();

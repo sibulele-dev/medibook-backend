@@ -14,41 +14,21 @@ const userRoleEnum = pgEnum("user_role", ["doctor", "admin"]);
 const users = pgTable("users", {
   id: text("id")
     .primaryKey()
-    .$defaultFn(() => nanoid(30)), // 21 characters for nanoid
+    .$defaultFn(() => nanoid(25)),
   email: text("email").notNull().unique(),
-  password: text("password").notNull(),
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   role: userRoleEnum("role").notNull(),
-  address: text("address"),
-  city: text("city"),
-  state: text("state"),
-  zip: text("zip"),
-  country: text("country"),
-  profilePicture: text("profile_picture"),
   isActive: boolean("is_active").notNull().default(true),
   emailVerified: boolean("email_verified").notNull().default(false),
+  phoneNumber: text("phone_number"),
+  passwordHash: text("password_hash").notNull(),
+  lastLoggedInAt: timestamp("last_logged_in_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-// Simple helper function to create a new user (role will be determined in service)
-const createUser = (userData) => {
-  return {
-    ...userData,
-    id: nanoid(21),
-    address: userData.address?.trim() || "",
-    city: userData.city?.trim() || "",
-    state: userData.state?.trim() || "",
-    zip: userData.zip?.trim() || "",
-    country: userData.country?.trim() || "",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
-};
-
 module.exports = {
   users,
   userRoleEnum,
-  createUser,
 };

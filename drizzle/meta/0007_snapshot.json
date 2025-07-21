@@ -1,6 +1,6 @@
 {
-  "id": "fa572c2c-3b96-4ca8-b486-1c9cd612ff45",
-  "prevId": "d35d46dd-f745-4c95-834e-c598cde4bf4b",
+  "id": "7e5e8b28-c81d-4f44-8b89-c635a2944446",
+  "prevId": "572f22bd-c758-4046-9d8c-8323223880d3",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -13,18 +13,6 @@
           "type": "text",
           "primaryKey": true,
           "notNull": true
-        },
-        "admin_email_id": {
-          "name": "admin_email_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_by_super_admin_id": {
-          "name": "created_by_super_admin_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         },
         "department": {
           "name": "department",
@@ -67,130 +55,10 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
-        },
-        "admins_admin_email_id_admin_email_id_fk": {
-          "name": "admins_admin_email_id_admin_email_id_fk",
-          "tableFrom": "admins",
-          "tableTo": "admin_email",
-          "columnsFrom": [
-            "admin_email_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "admins_created_by_super_admin_id_superAdmin_emails_id_fk": {
-          "name": "admins_created_by_super_admin_id_superAdmin_emails_id_fk",
-          "tableFrom": "admins",
-          "tableTo": "superAdmin_emails",
-          "columnsFrom": [
-            "created_by_super_admin_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.admin_email": {
-      "name": "admin_email",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "email": {
-          "name": "email",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "admin_email_email_unique": {
-          "name": "admin_email_email_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.superAdmin_emails": {
-      "name": "superAdmin_emails",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "email": {
-          "name": "email",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "superAdmin_emails_email_unique": {
-          "name": "superAdmin_emails_email_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
-        }
-      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -325,7 +193,7 @@
           "name": "phone_number",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "password_hash": {
           "name": "password_hash",

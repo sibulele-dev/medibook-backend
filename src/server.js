@@ -1,15 +1,12 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const cookieParser = require("cookie-parser");
 const db = require("./db");
+const helmet = require("helmet");
 
 // Import routes
 const userRoutes = require("./routes/user.routes");
 const practiceRoutes = require("./routes/practice.routes");
-
-// Import session cleanup utility
-const sessionCleanup = require("./utils/sessionCleanup");
 
 // Import email configuration
 const { verifyConnection: verifyEmailConnection } = require("./config/email");
@@ -29,7 +26,7 @@ app.use(
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
+app.use(helmet());
 
 // Routes
 app.use("/api/users", userRoutes);
@@ -101,14 +98,6 @@ const server = app.listen(PORT, async () => {
     );
   }
 
-  // Start session cleanup (every hour in production, every 10 minutes in development)
-  const cleanupInterval =
-    process.env.NODE_ENV === "production" ? 60 * 60 * 1000 : 10 * 60 * 1000;
-  sessionCleanup.startPeriodicCleanup(cleanupInterval);
-  console.log(
-    `🧹 Session cleanup started (every ${cleanupInterval / 1000 / 60} minutes)`
-  );
-
   // Test email connection
   try {
     const emailConnected = await verifyEmailConnection();
@@ -127,10 +116,6 @@ const server = app.listen(PORT, async () => {
 // Graceful shutdown handling
 const gracefulShutdown = (signal) => {
   console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
-
-  // Stop session cleanup
-  sessionCleanup.stopPeriodicCleanup();
-  console.log("🧹 Session cleanup stopped");
 
   // Close server
   server.close(() => {

@@ -1,6 +1,6 @@
 {
-  "id": "9b2d337f-a9a0-4d4e-be14-59a1e8ab1886",
-  "prevId": "cb0aeda8-0ecc-48c8-91d6-db635bcea96b",
+  "id": "3f020382-308d-4c71-af8b-fd1ad822c7e9",
+  "prevId": "fa572c2c-3b96-4ca8-b486-1c9cd612ff45",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -14,8 +14,8 @@
           "primaryKey": true,
           "notNull": true
         },
-        "user_id": {
-          "name": "user_id",
+        "admin_email_id": {
+          "name": "admin_email_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -49,12 +49,25 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "admins_user_id_users_id_fk": {
-          "name": "admins_user_id_users_id_fk",
+        "admins_id_users_id_fk": {
+          "name": "admins_id_users_id_fk",
           "tableFrom": "admins",
           "tableTo": "users",
           "columnsFrom": [
-            "user_id"
+            "id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "admins_admin_email_id_admin_email_id_fk": {
+          "name": "admins_admin_email_id_admin_email_id_fk",
+          "tableFrom": "admins",
+          "tableTo": "admin_email",
+          "columnsFrom": [
+            "admin_email_id"
           ],
           "columnsTo": [
             "id"
@@ -69,8 +82,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.doctors": {
-      "name": "doctors",
+    "public.admin_email": {
+      "name": "admin_email",
       "schema": "",
       "columns": {
         "id": {
@@ -79,84 +92,11 @@
           "primaryKey": true,
           "notNull": true
         },
-        "user_id": {
-          "name": "user_id",
+        "email": {
+          "name": "email",
           "type": "text",
           "primaryKey": false,
           "notNull": true
-        },
-        "specialization": {
-          "name": "specialization",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "phone_number": {
-          "name": "phone_number",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "practice_id": {
-          "name": "practice_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "license_number": {
-          "name": "license_number",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "experience": {
-          "name": "experience",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "bio": {
-          "name": "bio",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "address": {
-          "name": "address",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "city": {
-          "name": "city",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "state": {
-          "name": "state",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "zip": {
-          "name": "zip",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "country": {
-          "name": "country",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "is_active": {
-          "name": "is_active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
         },
         "created_at": {
           "name": "created_at",
@@ -174,13 +114,71 @@
         }
       },
       "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "admin_email_email_unique": {
+          "name": "admin_email_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.doctors": {
+      "name": "doctors",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "practice_id": {
+          "name": "practice_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "specialty": {
+          "name": "specialty",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bio": {
+          "name": "bio",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "profile_pic_url": {
+          "name": "profile_pic_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        }
+      },
+      "indexes": {},
       "foreignKeys": {
-        "doctors_user_id_users_id_fk": {
-          "name": "doctors_user_id_users_id_fk",
+        "doctors_id_users_id_fk": {
+          "name": "doctors_id_users_id_fk",
           "tableFrom": "doctors",
           "tableTo": "users",
           "columnsFrom": [
-            "user_id"
+            "id"
           ],
           "columnsTo": [
             "id"
@@ -224,12 +222,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "password": {
-          "name": "password",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
         "first_name": {
           "name": "first_name",
           "type": "text",
@@ -249,36 +241,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "address": {
-          "name": "address",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "city": {
-          "name": "city",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "state": {
-          "name": "state",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "zip": {
-          "name": "zip",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "country": {
-          "name": "country",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "is_active": {
           "name": "is_active",
           "type": "boolean",
@@ -292,6 +254,24 @@
           "primaryKey": false,
           "notNull": true,
           "default": false
+        },
+        "phone_number": {
+          "name": "phone_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "password_hash": {
+          "name": "password_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_logged_in_at": {
+          "name": "last_logged_in_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -402,93 +382,6 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.login_attempts": {
-      "name": "login_attempts",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "email": {
-          "name": "email",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "attempts": {
-          "name": "attempts",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "last_attempt_at": {
-          "name": "last_attempt_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "locked_until": {
-          "name": "locked_until",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "login_attempts_user_id_users_id_fk": {
-          "name": "login_attempts_user_id_users_id_fk",
-          "tableFrom": "login_attempts",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "login_attempts_email_unique": {
-          "name": "login_attempts_email_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
-        }
-      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false

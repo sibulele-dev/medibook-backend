@@ -2,7 +2,6 @@ const db = require("../db");
 const { doctors, createDoctorData } = require("../schema/doctor");
 const { users, createUser } = require("../schema/user");
 const { eq } = require("drizzle-orm");
-const bcrypt = require("bcryptjs");
 
 class DoctorService {
   async getAllDoctors() {
@@ -36,10 +35,9 @@ class DoctorService {
   }
 
   async registerDoctor(doctorData) {
-    // doctorData: { email, password, firstName, lastName, specialization, phoneNumber, practiceId, ... }
+    // doctorData: { email, firstName, lastName, specialization, phoneNumber, practiceId, ... }
     const {
       email,
-      password,
       firstName,
       lastName,
       specialization,
@@ -51,7 +49,6 @@ class DoctorService {
     } = doctorData;
     if (
       !email ||
-      !password ||
       !firstName ||
       !lastName ||
       !specialization ||
@@ -60,19 +57,19 @@ class DoctorService {
     ) {
       throw new Error("Missing required fields");
     }
-    const hashedPassword = await bcrypt.hash(password, 12);
+
     return await db.transaction(async (tx) => {
-      // Create user
+      // Create user (password will be handled by Supabase)
       const newUser = createUser({
         email,
-        password: hashedPassword,
         firstName,
         lastName,
         role: "doctor",
         isActive: true,
-        emailVerified: false,
+        emailVerified: true, // Supabase handles email verification
       });
       const [insertedUser] = await tx.insert(users).values(newUser).returning();
+
       // Create doctor
       const newDoctor = createDoctorData({
         userId: insertedUser.id,

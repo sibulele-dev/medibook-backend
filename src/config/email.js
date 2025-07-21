@@ -95,13 +95,13 @@ const emailTemplates = {
         <h2 style="color: #059669;">Verify Your Email</h2>
         <p>Hello ${userName},</p>
         <p>Please verify your email address by clicking the link below:</p>
-        <p><a href="${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}" style="background-color: #059669; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px;">Verify Email</a></p>
+        <p><a href="${process.env.FRONTEND_URL}/auth/verify-email?token=${verificationToken}" style="background-color: #059669; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px;">Verify Email</a></p>
         <p>If you didn't create an account, please ignore this email.</p>
         <p>This link will expire in 24 hours.</p>
         <p>Best regards,<br>The Medibook Team</p>
       </div>
     `,
-    text: `Verify Your Email - Hello ${userName}, Please verify your email address by visiting ${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`,
+    text: `Verify Your Email - Hello ${userName}, Please verify your email address by visiting ${process.env.FRONTEND_URL}/auth/verify-email?token=${verificationToken}`,
   }),
 
   // Session security alert template

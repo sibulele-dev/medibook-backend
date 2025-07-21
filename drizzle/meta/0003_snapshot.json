@@ -1,11 +1,11 @@
 {
-  "id": "fb3bbf91-3719-4f96-b585-7630e6128c59",
-  "prevId": "93b0d550-8af1-4016-becd-351ff144a3f0",
+  "id": "d35d46dd-f745-4c95-834e-c598cde4bf4b",
+  "prevId": "79e26a7d-3532-45dd-bc3c-a808fd7dad53",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
-    "public.doctors": {
-      "name": "doctors",
+    "public.admins": {
+      "name": "admins",
       "schema": "",
       "columns": {
         "id": {
@@ -14,54 +14,29 @@
           "primaryKey": true,
           "notNull": true
         },
-        "user_id": {
-          "name": "user_id",
+        "admin_email_id": {
+          "name": "admin_email_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "specialization": {
-          "name": "specialization",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "phone_number": {
-          "name": "phone_number",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "practice_id": {
-          "name": "practice_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "license_number": {
-          "name": "license_number",
+        "created_by_super_admin_id": {
+          "name": "created_by_super_admin_id",
           "type": "text",
           "primaryKey": false,
           "notNull": false
         },
-        "experience": {
-          "name": "experience",
+        "department": {
+          "name": "department",
           "type": "text",
           "primaryKey": false,
           "notNull": false
         },
-        "bio": {
-          "name": "bio",
+        "permissions": {
+          "name": "permissions",
           "type": "text",
           "primaryKey": false,
           "notNull": false
-        },
-        "is_active": {
-          "name": "is_active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
         },
         "created_at": {
           "name": "created_at",
@@ -80,12 +55,196 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "doctors_user_id_users_id_fk": {
-          "name": "doctors_user_id_users_id_fk",
+        "admins_id_users_id_fk": {
+          "name": "admins_id_users_id_fk",
+          "tableFrom": "admins",
+          "tableTo": "users",
+          "columnsFrom": [
+            "id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "admins_admin_email_id_admin_email_id_fk": {
+          "name": "admins_admin_email_id_admin_email_id_fk",
+          "tableFrom": "admins",
+          "tableTo": "admin_email",
+          "columnsFrom": [
+            "admin_email_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "admins_created_by_super_admin_id_superAdmin_emails_id_fk": {
+          "name": "admins_created_by_super_admin_id_superAdmin_emails_id_fk",
+          "tableFrom": "admins",
+          "tableTo": "superAdmin_emails",
+          "columnsFrom": [
+            "created_by_super_admin_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.admin_email": {
+      "name": "admin_email",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "admin_email_email_unique": {
+          "name": "admin_email_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.superAdmin_emails": {
+      "name": "superAdmin_emails",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "superAdmin_emails_email_unique": {
+          "name": "superAdmin_emails_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.doctors": {
+      "name": "doctors",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "practice_id": {
+          "name": "practice_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "specialty": {
+          "name": "specialty",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bio": {
+          "name": "bio",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "profile_pic_url": {
+          "name": "profile_pic_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "doctors_id_users_id_fk": {
+          "name": "doctors_id_users_id_fk",
           "tableFrom": "doctors",
           "tableTo": "users",
           "columnsFrom": [
-            "user_id"
+            "id"
           ],
           "columnsTo": [
             "id"
@@ -113,92 +272,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.users": {
-      "name": "users",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "email": {
-          "name": "email",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "password": {
-          "name": "password",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "first_name": {
-          "name": "first_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "last_name": {
-          "name": "last_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "role": {
-          "name": "role",
-          "type": "user_role",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "is_active": {
-          "name": "is_active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "email_verified": {
-          "name": "email_verified",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "users_email_unique": {
-          "name": "users_email_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.practices": {
       "name": "practices",
       "schema": "",
@@ -220,6 +293,30 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "city": {
+          "name": "city",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "zip": {
+          "name": "zip",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "country": {
+          "name": "country",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "phone": {
           "name": "phone",
@@ -257,8 +354,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.login_attempts": {
-      "name": "login_attempts",
+    "public.users": {
+      "name": "users",
       "schema": "",
       "columns": {
         "id": {
@@ -273,22 +370,47 @@
           "primaryKey": false,
           "notNull": true
         },
-        "attempts": {
-          "name": "attempts",
-          "type": "integer",
+        "first_name": {
+          "name": "first_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_name": {
+          "name": "last_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "user_role",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "default": 0
+          "default": true
         },
-        "last_attempt_at": {
-          "name": "last_attempt_at",
-          "type": "timestamp",
+        "email_verified": {
+          "name": "email_verified",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "default": "now()"
+          "default": false
         },
-        "locked_until": {
-          "name": "locked_until",
+        "phone_number": {
+          "name": "phone_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_logged_in_at": {
+          "name": "last_logged_in_at",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": false
@@ -312,66 +434,14 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "login_attempts_email_unique": {
-          "name": "login_attempts_email_unique",
+        "users_email_unique": {
+          "name": "users_email_unique",
           "nullsNotDistinct": false,
           "columns": [
             "email"
           ]
         }
       },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.practice_doctors": {
-      "name": "practice_doctors",
-      "schema": "",
-      "columns": {
-        "practice_id": {
-          "name": "practice_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "doctor_id": {
-          "name": "doctor_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "practice_doctors_practice_id_practices_id_fk": {
-          "name": "practice_doctors_practice_id_practices_id_fk",
-          "tableFrom": "practice_doctors",
-          "tableTo": "practices",
-          "columnsFrom": [
-            "practice_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "practice_doctors_doctor_id_users_id_fk": {
-          "name": "practice_doctors_doctor_id_users_id_fk",
-          "tableFrom": "practice_doctors",
-          "tableTo": "users",
-          "columnsFrom": [
-            "doctor_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false

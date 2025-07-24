@@ -215,20 +215,16 @@ class UserService {
   // Login user
   async loginUser(email, password) {
     const normalizedEmail = email.toLowerCase().trim();
-    console.log("[LOGIN] Normalized email:", normalizedEmail);
     const [user] = await db
       .select()
       .from(users)
       .where(eq(users.email, normalizedEmail));
-    console.log("[LOGIN] User found:", user);
     if (!user) throw new Error("User not found");
-    console.log("[LOGIN] emailVerified:", user.emailVerified);
     if (!user.emailVerified)
       throw new Error(
         "Email not verified. Please verify your email before logging in."
       );
     const valid = await verifyPassword(password, user.passwordHash);
-    console.log("[LOGIN] Password valid:", valid);
     if (!valid) throw new Error("Invalid credentials");
     const token = generateJWT(user);
     return { token, user };

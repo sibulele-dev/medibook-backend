@@ -1,4 +1,6 @@
 const nodemailer = require("nodemailer");
+const ejs = require("ejs");
+const path = require("path");
 
 // Email configuration from environment variables
 const emailConfig = {
@@ -17,6 +19,12 @@ const emailConfig = {
 
 // Create transporter
 const transporter = nodemailer.createTransport(emailConfig);
+
+// Helper to render EJS templates
+async function renderTemplate(templateName, data) {
+  const templatePath = path.join(__dirname, "../Templates", templateName);
+  return await ejs.renderFile(templatePath, data);
+}
 
 // Verify connection configuration
 const verifyConnection = async () => {
@@ -55,19 +63,19 @@ const sendEmail = async (options) => {
 
 // Email templates
 const emailTemplates = {
-  // Welcome email template
-  welcome: (userName) => ({
+  
+  // Welcome email for doctors (EJS)
+  welcomeDoctor: async (userName, accountLink) => ({
     subject: "Welcome to Medibook!",
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #2563eb;">Welcome to Medibook!</h2>
-        <p>Hello ${userName},</p>
-        <p>Thank you for registering with Medibook. Your account has been created successfully.</p>
-        <p>You can now log in to your account and start using our services.</p>
-        <p>Best regards,<br>The Medibook Team</p>
-      </div>
-    `,
-    text: `Welcome to Medibook! Hello ${userName}, Thank you for registering with Medibook. Your account has been created successfully.`,
+    html: await renderTemplate("welcome-doctor.ejs", { userName, accountLink }),
+    text: `Welcome to Medibook, Dr. ${userName}! Thank you for joining our community.`
+  }),
+
+  // Welcome email for admins (EJS)
+  welcomeAdmin: async (userName) => ({
+    subject: "Welcome to Medibook (Admin)",
+    html: await renderTemplate("welcome-admin.ejs", { userName }),
+    text: `Welcome to Medibook, ${userName}! You now have admin access.`
   }),
 
   // Password reset email template

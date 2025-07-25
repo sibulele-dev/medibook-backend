@@ -14,6 +14,7 @@ const practices = pgTable("practices", {
   zip: text("zip"),
   country: text("country"),
   phone: text("phone").notNull(),
+  practiceNumber: text("practice_number"), // Optional field
   status: text("status").default("active"), // active, inactive
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

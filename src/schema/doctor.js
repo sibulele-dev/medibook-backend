@@ -15,10 +15,17 @@ const doctors = pgTable("doctors", {
     .references(() => practices.id),
   specialty: text("specialty").notNull(),
   bio: text("bio"), // Optional
+  status: text("status").default("pending"), // pending, active, rejected
   profilePicUrl: text("profile_pic_url"), // Optional
   isActive: boolean("is_active").notNull().default(true),
 });
 
+
+const doctorStatusEnum = {
+  ACTIVE: "active",
+  PENDING: "pending",
+  REJECTED: "rejected",
+};
 module.exports = {
   doctors,
 };

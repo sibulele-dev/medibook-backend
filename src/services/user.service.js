@@ -537,3 +537,4 @@ module.exports = new UserService();
 module.exports.hashPassword = hashPassword;
 module.exports.verifyPassword = verifyPassword;
 module.exports.generateJWT = generateJWT;
+module.exports.createUser = createUser;

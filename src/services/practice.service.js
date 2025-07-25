@@ -1,12 +1,32 @@
 const db = require("../db");
-const {
-  practices,
-  users,
-  validatePracticeData,
-  createPracticeData,
-  updatePracticeData,
-} = require("../schema");
+const { practices } = require("../schema/practice");
+const { doctors } = require("../schema/doctor");
+const { users } = require("../schema/user");
 const { eq, like, desc, asc, and, or, count, sql } = require("drizzle-orm");
+
+// Validation function for practice data
+function validatePracticeData(data) {
+  const errors = [];
+  if (!data.name || typeof data.name !== 'string') errors.push('Practice name is required');
+  if (!data.address || typeof data.address !== 'string') errors.push('Address is required');
+  if (!data.phone || typeof data.phone !== 'string') errors.push('Phone is required');
+  return errors;
+}
+
+// Create a new practice data object for insertion
+function createPracticeData(data) {
+  return {
+    name: data.name,
+    address: data.address,
+    city: data.city || '',
+    state: data.state || '',
+    zip: data.zip || '',
+    country: data.country || '',
+    phone: data.phone,
+    practiceNumber: data.practiceNumber || null,
+    status: data.status || 'active',
+  };
+}
 
 class PracticeService {
   // Get all practices with pagination and filters
@@ -35,11 +55,40 @@ class PracticeService {
       const whereClause =
         whereConditions.length > 0 ? and(...whereConditions) : undefined;
 
-      // Get practices with pagination
+      // Get practices with doctor count (explicit fields)
       const practicesList = await db
-        .select()
+        .select({
+          id: practices.id,
+          name: practices.name,
+          address: practices.address,
+          city: practices.city,
+          state: practices.state,
+          zip: practices.zip,
+          country: practices.country,
+          phone: practices.phone,
+          practiceNumber: practices.practiceNumber,
+          status: practices.status,
+          createdAt: practices.createdAt,
+          updatedAt: practices.updatedAt,
+          doctorCount: sql`COUNT(doctors.id)`
+        })
         .from(practices)
+        .leftJoin(doctors, eq(practices.id, doctors.practiceId))
         .where(whereClause)
+        .groupBy(
+          practices.id,
+          practices.name,
+          practices.address,
+          practices.city,
+          practices.state,
+          practices.zip,
+          practices.country,
+          practices.phone,
+          practices.practiceNumber,
+          practices.status,
+          practices.createdAt,
+          practices.updatedAt
+        )
         .orderBy(desc(practices.createdAt))
         .limit(limit)
         .offset(offset);

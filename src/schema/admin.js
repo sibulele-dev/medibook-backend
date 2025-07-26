@@ -1,5 +1,6 @@
-const { pgTable, text, timestamp } = require("drizzle-orm/pg-core");
+const { pgTable, text, timestamp, primaryKey } = require("drizzle-orm/pg-core");
 const { users } = require("./user");
+const { departments } = require("./department");
 
 // Admin table schema - extends user with admin-specific fields
 const admins = pgTable("admins", {
@@ -8,10 +9,34 @@ const admins = pgTable("admins", {
     .notNull()
     .references(() => users.id), // FK → users table
 
-  department: text("department"), // optional field
-  permissions: text("permissions"), // can be JSON or comma-separated
+  departmentId: text("department_id")
+    .notNull()
+    .references(() => departments.id), // FK → departments table
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-module.exports = { admins };
+// Permissions table (if not already defined)
+const permissions = pgTable("permissions", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+});
+
+// Join table for many-to-many admin-permissions
+const adminPermissions = pgTable(
+  "admin_permissions",
+  {
+    adminId: text("admin_id")
+      .notNull()
+      .references(() => admins.id),
+    permissionId: text("permission_id")
+      .notNull()
+      .references(() => permissions.id),
+  },
+  (table) => ({
+    pk: primaryKey(table.adminId, table.permissionId),
+  })
+);
+
+module.exports = { admins, permissions, adminPermissions };

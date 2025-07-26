@@ -1,4 +1,4 @@
-const { pgTable, text, timestamp, boolean } = require("drizzle-orm/pg-core");
+const { pgTable, text, timestamp, boolean, integer } = require("drizzle-orm/pg-core");
 const { nanoid } = require("nanoid");
 const { users } = require("./user");
 const { practices } = require("./practice");
@@ -15,17 +15,25 @@ const doctors = pgTable("doctors", {
     .references(() => practices.id),
   specialty: text("specialty").notNull(),
   bio: text("bio"), // Optional
+  qualifications: text("qualifications"), // Added: Professional qualifications
+  hpcsa: text("hpcsa"), // Added: HPCSA registration number
+  experience: integer("experience"), // Added: Years of experience
+  languages: text("languages"), // Added: Languages spoken
+  telehealth: text("telehealth"), // Added: Telehealth availability (yes/no)
   status: text("status").default("pending"), // pending, active, rejected
   profilePicUrl: text("profile_pic_url"), // Optional
   isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
-
 
 const doctorStatusEnum = {
   ACTIVE: "active",
   PENDING: "pending",
   REJECTED: "rejected",
 };
+
 module.exports = {
   doctors,
+  doctorStatusEnum,
 };

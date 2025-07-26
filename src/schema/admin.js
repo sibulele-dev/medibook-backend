@@ -1,4 +1,4 @@
-const { pgTable, text, timestamp } = require("drizzle-orm/pg-core");
+const { pgTable, text, timestamp, primaryKey } = require("drizzle-orm/pg-core");
 const { users } = require("./user");
 const { departments } = require("./department");
 
@@ -24,17 +24,19 @@ const permissions = pgTable("permissions", {
 });
 
 // Join table for many-to-many admin-permissions
-const adminPermissions = pgTable("admin_permissions", {
-  adminId: text("admin_id")
-    .notNull()
-    .references(() => admins.id),
-  permissionId: text("permission_id")
-    .notNull()
-    .references(() => permissions.id),
-}, (table) => {
-  return {
-    pk: table.primaryKey(["admin_id", "permission_id"]),
-  };
-});
+const adminPermissions = pgTable(
+  "admin_permissions",
+  {
+    adminId: text("admin_id")
+      .notNull()
+      .references(() => admins.id),
+    permissionId: text("permission_id")
+      .notNull()
+      .references(() => permissions.id),
+  },
+  (table) => ({
+    pk: primaryKey(table.adminId, table.permissionId),
+  })
+);
 
 module.exports = { admins, permissions, adminPermissions };

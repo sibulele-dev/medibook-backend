@@ -1,1 +1,0 @@
-ALTER TABLE "doctors" ADD COLUMN "status" text DEFAULT 'pending';

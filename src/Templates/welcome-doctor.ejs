@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Welcome to Medibook - Doctor</title>
+    <style>
+      body {
+        background: #99e2b4;
+        font-family: 'Segoe UI', Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+      }
+      .container {
+        background: #fff;
+        max-width: 500px;
+        margin: 40px auto;
+        border-radius: 18px;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+        padding: 48px 32px 40px 32px;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+      }
+      .brand {
+        font-size: 1.5em;
+        font-weight: bold;
+        color: #56ab91;
+        text-align: left;
+        margin-bottom: 24px;
+      }
+      .hands {
+        width: 80px;
+        margin: 0 auto 18px auto;
+        display: block;
+      }
+      .headline {
+        font-size: 2em;
+        color: #333333;
+        font-weight: bold;
+        margin-bottom: 10px;
+      }
+      .subheadline {
+        font-size: 1.2em;
+        color: #358f80;
+        font-weight: 500;
+        margin-bottom: 24px;
+      }
+      .message {
+        color: #358f80;
+        font-size: 1.05em;
+        margin-bottom: 32px;
+      }
+      .button {
+        background: #248277;
+        color: #fff;
+        padding: 16px 38px;
+        border-radius: 30px;
+        text-decoration: none;
+        font-weight: bold;
+        font-size: 1.1em;
+        display: inline-block;
+        margin-bottom: 20px;
+        letter-spacing: 1px;
+        box-shadow: 0 2px 8px rgba(36,130,119,0.12);
+        transition: background 0.2s;
+      }
+      .button:hover {
+        background: #14746f;
+      }
+      .footer {
+        color: #78c6a3;
+        font-size: 0.95em;
+        margin-top: 30px;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="brand">Medibook</div>
+      <img class="hands" src="https://cdn-icons-png.flaticon.com/512/616/616494.png" alt="Welcome Hands" />
+      <div class="headline">Congrats, Dr. <%= userName %>!</div>
+      <div class="subheadline">Welcome to Medibook!</div>
+      <div class="message">
+        Thank you for joining our community and for trusting us to help you care for your patients.<br>
+        We’re excited to have you on board!
+      </div>
+      <a href="<%= accountLink %>" class="button">View your account</a>
+      <div class="footer">
+        Medibook | 123 Health Ave, Suite 100 | Your City, Country
+      </div>
+    </div>
+  </body>
+</html> 

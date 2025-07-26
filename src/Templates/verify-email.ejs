@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Verify Your Email</title>
+    <style>
+      body {
+        background: #99e2b4;
+        font-family: 'Segoe UI', Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+      }
+      .container {
+        background: #fff;
+        max-width: 600px;
+        margin: 40px auto;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        padding: 40px 30px 30px 30px;
+        text-align: center;
+      }
+      .logo {
+        font-size: 2.2em;
+        font-weight: bold;
+        color: #56ab91;
+        margin-bottom: 10px;
+        font-family: 'Segoe Script', cursive, sans-serif;
+      }
+      .subtitle {
+        font-size: 1em;
+        color: #358f80;
+        letter-spacing: 2px;
+        margin-bottom: 30px;
+      }
+      .icon {
+        width: 120px;
+        margin: 30px auto 20px auto;
+        display: block;
+      }
+      h1 {
+        font-size: 1.7em;
+        color: #333333;
+        margin-bottom: 10px;
+      }
+      .divider {
+        width: 60px;
+        height: 3px;
+        background: #56ab91;
+        margin: 0 auto 20px auto;
+        border-radius: 2px;
+      }
+      .message {
+        color: #358f80;
+        font-size: 1.1em;
+        margin-bottom: 30px;
+      }
+      .button {
+        background: #248277;
+        color: #fff;
+        padding: 14px 36px;
+        border-radius: 4px;
+        text-decoration: none;
+        font-weight: bold;
+        font-size: 1em;
+        display: inline-block;
+        margin-bottom: 30px;
+        letter-spacing: 1px;
+      }
+      .button:hover {
+        background: #14746f;
+      }
+      .footer {
+        color: #78c6a3;
+        font-size: 0.95em;
+        margin-top: 30px;
+        text-align: center;
+      }
+      .social-icons {
+        margin: 20px 0 10px 0;
+      }
+      .social-icons img {
+        width: 32px;
+        margin: 0 6px;
+        vertical-align: middle;
+      }
+      .footer-links a {
+        color: #248277;
+        text-decoration: none;
+        margin: 0 8px;
+      }
+      .app-badges img {
+        width: 120px;
+        margin: 10px 8px 0 8px;
+        vertical-align: middle;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="logo">Medibook</div>
+      <div class="subtitle">Your Health, Our Priority</div>
+      <img class="icon" src="https://cdn-icons-png.flaticon.com/512/561/561127.png" alt="Email Icon" />
+      <h1>Verify Your Email</h1>
+      <div class="divider"></div>
+      <div class="message">
+        Thank you for registering with Medibook<% if (typeof userName !== 'undefined') { %>, <%= userName %><% } %>!<br>
+        To complete your registration and start booking appointments, please confirm your email address by clicking the button below.
+      </div>
+      <a href="<%= verificationLink %>" class="button">VERIFY EMAIL</a>
+      <div class="footer">
+        <div class="social-icons">
+          <img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook" />
+          <img src="https://cdn-icons-png.flaticon.com/512/733/733579.png" alt="Twitter" />
+          <img src="https://cdn-icons-png.flaticon.com/512/733/733614.png" alt="Instagram" />
+          <img src="https://cdn-icons-png.flaticon.com/512/733/733561.png" alt="LinkedIn" />
+        </div>
+        <div class="footer-links">
+          <a href="#">Privacy Policy</a> |
+          <a href="#">Help</a> |
+          <a href="#">About Us</a>
+        </div>
+        <div style="margin: 10px 0;">
+          This email was sent to you by Medibook. You are receiving this email because you registered on Medibook.<br>
+          If you wish to unsubscribe from all future emails, please <a href="#">click here</a>.
+        </div>
+        <div style="color:#888; font-size:0.9em;">
+          Medibook | 123 Health Ave, Suite 100 | Your City, Country
+        </div>
+        <div class="app-badges">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Google Play" />
+          <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="App Store" />
+        </div>
+      </div>
+    </div>
+  </body>
+</html> 

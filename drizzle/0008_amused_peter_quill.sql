@@ -1,1 +1,0 @@
-ALTER TABLE "practices" ADD COLUMN "practice_number" text;

@@ -9,7 +9,12 @@ function validatePracticeData(data) {
   const errors = [];
   if (!data.name || typeof data.name !== 'string') errors.push('Practice name is required');
   if (!data.address || typeof data.address !== 'string') errors.push('Address is required');
+  if (!data.city || typeof data.city !== 'string') errors.push('City is required');
+  if (!data.province || typeof data.province !== 'string') errors.push('Province is required');
+  if (!data.zip || typeof data.zip !== 'string') errors.push('Zip code is required');
   if (!data.phone || typeof data.phone !== 'string') errors.push('Phone is required');
+  if (!data.practiceContact || typeof data.practiceContact !== 'string') errors.push('Practice contact info is required');
+  if (!data.practiceNumber || typeof data.practiceNumber !== 'string') errors.push('Practice number is required');
   return errors;
 }
 
@@ -19,13 +24,30 @@ function createPracticeData(data) {
     name: data.name,
     address: data.address,
     city: data.city || '',
-    state: data.state || '',
+    province: data.province || '',
     zip: data.zip || '',
     country: data.country || '',
     phone: data.phone,
-    practiceNumber: data.practiceNumber || null,
+    practiceContact: data.practiceContact,
+    practiceNumber: data.practiceNumber,
     status: data.status || 'active',
   };
+}
+
+// Update practice data object
+function updatePracticeData(data) {
+  const updateData = {};
+  if (data.name) updateData.name = data.name;
+  if (data.address) updateData.address = data.address;
+  if (data.city) updateData.city = data.city;
+  if (data.province) updateData.province = data.province;
+  if (data.zip) updateData.zip = data.zip;
+  if (data.country) updateData.country = data.country;
+  if (data.phone) updateData.phone = data.phone;
+  if (data.practiceContact) updateData.practiceContact = data.practiceContact;
+  if (data.practiceNumber) updateData.practiceNumber = data.practiceNumber;
+  if (data.status) updateData.status = data.status;
+  return updateData;
 }
 
 class PracticeService {
@@ -62,10 +84,11 @@ class PracticeService {
           name: practices.name,
           address: practices.address,
           city: practices.city,
-          state: practices.state,
+          province: practices.province,
           zip: practices.zip,
           country: practices.country,
           phone: practices.phone,
+          practiceContact: practices.practiceContact,
           practiceNumber: practices.practiceNumber,
           status: practices.status,
           createdAt: practices.createdAt,
@@ -80,10 +103,11 @@ class PracticeService {
           practices.name,
           practices.address,
           practices.city,
-          practices.state,
+          practices.province,
           practices.zip,
           practices.country,
           practices.phone,
+          practices.practiceContact,
           practices.practiceNumber,
           practices.status,
           practices.createdAt,

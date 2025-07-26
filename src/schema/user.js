@@ -19,9 +19,9 @@ const users = pgTable("users", {
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   role: userRoleEnum("role").notNull(),
+  phone: text("phone"), // Changed from phoneNumber to phone for consistency
   isActive: boolean("is_active").notNull().default(true),
   emailVerified: boolean("email_verified").notNull().default(false),
-  phoneNumber: text("phone_number"),
   passwordHash: text("password_hash").notNull(),
   lastLoggedInAt: timestamp("last_logged_in_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),

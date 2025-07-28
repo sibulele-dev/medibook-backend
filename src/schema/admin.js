@@ -1,17 +1,13 @@
 const { pgTable, text, timestamp } = require("drizzle-orm/pg-core");
-const { users } = require("./user");
 
-// Admin table schema - extends user with admin-specific fields
+// Admin table schema
 const admins = pgTable("admins", {
-  id: text("id") // admin ID (same as users.id)
-    .primaryKey()
-    .notNull()
-    .references(() => users.id), // FK → users table
-
-  department: text("department"), // optional field
-  permissions: text("permissions"), // can be JSON or comma-separated
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  id: text().primaryKey().notNull(),
+  departmentId: text("department_id").notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull(),
 });
 
-module.exports = { admins };
+module.exports = {
+  admins,
+};

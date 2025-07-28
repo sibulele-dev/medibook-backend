@@ -1,14 +1,90 @@
 const db = require("../db");
-const {
-  practices,
-  users,
-  validatePracticeData,
-  createPracticeData,
-  updatePracticeData,
-} = require("../schema");
+const { practices, users } = require("../schema");
 const { eq, like, desc, asc, and, or, count, sql } = require("drizzle-orm");
+const { nanoid } = require("nanoid");
+
+// Helper function to validate practice data
+const validatePracticeData = (practiceData) => {
+  const errors = [];
+
+  if (!practiceData.name || typeof practiceData.name !== "string") {
+    errors.push("Practice name is required");
+  }
+
+  if (!practiceData.address || typeof practiceData.address !== "string") {
+    errors.push("Practice address is required");
+  }
+
+  if (!practiceData.phone || typeof practiceData.phone !== "string") {
+    errors.push("Practice phone number is required");
+  }
+
+  return errors;
+};
+
+// Helper function to create practice data
+const createPracticeData = (practiceData) => {
+  return {
+    id: nanoid(25),
+    name: practiceData.name,
+    address: practiceData.address,
+    city: practiceData.city || null,
+    province: practiceData.state || null, // Map state to province
+    zip: practiceData.zip || null,
+    country: practiceData.country || null,
+    phone: practiceData.phone,
+    practiceContact: practiceData.practiceContact || null,
+    practiceNumber: practiceData.practiceNumber || `PRAC-${nanoid(8)}`, // Generate if not provided
+    status: practiceData.status || "active",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+};
+
+// Helper function to update practice data
+const updatePracticeData = (practiceData) => {
+  const updateData = {
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (practiceData.name !== undefined) updateData.name = practiceData.name;
+  if (practiceData.address !== undefined)
+    updateData.address = practiceData.address;
+  if (practiceData.city !== undefined) updateData.city = practiceData.city;
+  if (practiceData.state !== undefined)
+    updateData.province = practiceData.state; // Map state to province
+  if (practiceData.zip !== undefined) updateData.zip = practiceData.zip;
+  if (practiceData.country !== undefined)
+    updateData.country = practiceData.country;
+  if (practiceData.phone !== undefined) updateData.phone = practiceData.phone;
+  if (practiceData.practiceContact !== undefined)
+    updateData.practiceContact = practiceData.practiceContact;
+  if (practiceData.practiceNumber !== undefined)
+    updateData.practiceNumber = practiceData.practiceNumber;
+  if (practiceData.status !== undefined)
+    updateData.status = practiceData.status;
+
+  return updateData;
+};
 
 class PracticeService {
+  // Check if practices table exists
+  async checkTableExists() {
+    try {
+      const result = await db.execute(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = 'practices'
+        );
+      `);
+      return result[0]?.exists || false;
+    } catch (error) {
+      console.error("Error checking if practices table exists:", error);
+      return false;
+    }
+  }
+
   // Get all practices with pagination and filters
   async getAllPractices(filters = {}) {
     try {
@@ -86,14 +162,34 @@ class PracticeService {
   // Create new practice
   async createPractice(practiceData) {
     try {
+      console.log("Creating practice with data:", practiceData);
+      
+      // Check if practices table exists
+      const tableExists = await this.checkTableExists();
+      if (!tableExists) {
+        console.error("Practices table does not exist");
+        throw new Error("Database table 'practices' does not exist. Please run database migrations.");
+      }
+      
       // Validate practice data
       const validationErrors = validatePracticeData(practiceData);
       if (validationErrors.length > 0) {
+        console.log("Validation errors:", validationErrors);
         throw new Error(validationErrors.join(", "));
       }
 
       // Create practice data
       const newPracticeData = createPracticeData(practiceData);
+      console.log("Processed practice data:", newPracticeData);
+
+      // Test database connection first
+      try {
+        await db.execute("SELECT 1 as test");
+        console.log("Database connection test successful");
+      } catch (dbError) {
+        console.error("Database connection test failed:", dbError);
+        throw new Error("Database connection failed");
+      }
 
       // Insert practice
       const result = await db
@@ -101,9 +197,11 @@ class PracticeService {
         .values(newPracticeData)
         .returning();
 
+      console.log("Practice created successfully:", result[0]);
       return result[0];
     } catch (error) {
       console.error("Create practice error:", error);
+      console.error("Error stack:", error.stack);
       throw error;
     }
   }

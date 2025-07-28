@@ -5,57 +5,15 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1752486335449,
-      "tag": "0000_purple_human_robot",
+      "when": 1753546437568,
+      "tag": "0000_lucky_the_fury",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
-      "when": 1752489110900,
-      "tag": "0001_late_mentallo",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1752490034758,
-      "tag": "0002_awesome_viper",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1752491111355,
-      "tag": "0003_wandering_toad",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1752495644745,
-      "tag": "0004_greedy_reptil",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1753117069168,
-      "tag": "0005_mute_glorian",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1753125853932,
-      "tag": "0006_natural_smiling_tiger",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1753126740643,
-      "tag": "0007_sudden_shatterstar",
+      "when": 1753548945236,
+      "tag": "0001_new_nehzno",
       "breakpoints": true
     }
   ]

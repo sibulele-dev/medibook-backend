@@ -22,10 +22,10 @@ const transporter = nodemailer.createTransport(emailConfig);
 const verifyConnection = async () => {
   try {
     await transporter.verify();
-    console.log("✅ Email server connection verified successfully");
+    // Email server connection verified successfully
     return true;
   } catch (error) {
-    console.error("❌ Email server connection failed:", error.message);
+    console.error("Email server connection failed:", error.message);
     return false;
   }
 };
@@ -42,13 +42,13 @@ const sendEmail = async (options) => {
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log("📧 Email sent successfully:", info.messageId);
+    // Email sent successfully
     return {
       success: true,
       messageId: info.messageId,
     };
   } catch (error) {
-    console.error("❌ Email sending failed:", error);
+    console.error("Email sending failed:", error);
     throw error;
   }
 };
@@ -124,6 +124,25 @@ const emailTemplates = {
       </div>
     `,
     text: `Security Alert - Hello ${userName}, We detected a new login to your account. If this wasn't you, please change your password immediately.`,
+  }),
+
+  // Account verification template (for team members and doctors)
+  accountVerification: (verificationToken, userName, role = "team member") => ({
+    subject: "Welcome to Medibook - Verify Your Account",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #059669;">Welcome to Medibook!</h2>
+        <p>Hello ${userName},</p>
+        <p>Your account has been created by an administrator. To complete your account setup, 
+        please verify your email address and set your password by clicking the button below:</p>
+        <p><a href="${process.env.FRONTEND_URL}/auth/set-initial-password?token=${verificationToken}" style="background-color: #059669; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px;">Verify Account & Set Password</a></p>
+        <p>After verification, you'll be able to log in to your Medibook account.</p>
+        <p>If you didn't expect this email, please contact your administrator.</p>
+        <p>This link will expire in 24 hours.</p>
+        <p>Best regards,<br>The Medibook Team</p>
+      </div>
+    `,
+    text: `Welcome to Medibook! Hello ${userName}, Your account has been created. Please verify your account by visiting ${process.env.FRONTEND_URL}/auth/set-initial-password?token=${verificationToken}`,
   }),
 };
 

@@ -1,6 +1,29 @@
 const practiceService = require("../services/practice.service");
 
 class PracticeController {
+  // Check database status
+  async checkDatabaseStatus(req, res) {
+    try {
+      const tableExists = await practiceService.checkTableExists();
+
+      res.status(200).json({
+        success: true,
+        data: {
+          tableExists,
+          message: tableExists
+            ? "Practices table exists"
+            : "Practices table does not exist",
+        },
+      });
+    } catch (error) {
+      console.error("Database status check error:", error);
+      res.status(500).json({
+        success: false,
+        message: error.message || "Failed to check database status",
+      });
+    }
+  }
+
   // Get all practices
   async getAllPractices(req, res) {
     try {

@@ -12,7 +12,7 @@ class EmailService {
         text: template.text,
       });
 
-      console.log(`Welcome email sent to ${userEmail}`);
+      // Welcome email sent successfully
       return result;
     } catch (error) {
       console.error("Error sending welcome email:", error);
@@ -31,7 +31,7 @@ class EmailService {
         text: template.text,
       });
 
-      console.log(`Password reset email sent to ${userEmail}`);
+      // Password reset email sent successfully
       return result;
     } catch (error) {
       console.error("Error sending password reset email:", error);
@@ -53,10 +53,33 @@ class EmailService {
         text: template.text,
       });
 
-      console.log(`Email verification sent to ${userEmail}`);
+      // Email verification sent successfully
       return result;
     } catch (error) {
       console.error("Error sending email verification:", error);
+      throw error;
+    }
+  }
+
+  // Send account verification email (for team members and doctors)
+  async sendAccountVerificationEmail(userEmail, userName, verificationToken, role = "team member") {
+    try {
+      const template = emailTemplates.accountVerification(
+        verificationToken,
+        userName,
+        role
+      );
+      const result = await sendEmail({
+        to: userEmail,
+        subject: template.subject,
+        html: template.html,
+        text: template.text,
+      });
+
+      // Account verification email sent successfully
+      return result;
+    } catch (error) {
+      console.error("Error sending account verification email:", error);
       throw error;
     }
   }
@@ -75,7 +98,7 @@ class EmailService {
         text: template.text,
       });
 
-      console.log(`Security alert sent to ${userEmail}`);
+      // Security alert sent successfully
       return result;
     } catch (error) {
       console.error("Error sending security alert:", error);
@@ -93,7 +116,7 @@ class EmailService {
         text: textContent,
       });
 
-      console.log(`Custom email sent to ${userEmail}`);
+      // Custom email sent successfully
       return result;
     } catch (error) {
       console.error("Error sending custom email:", error);
@@ -124,7 +147,7 @@ class EmailService {
         }
       }
 
-      console.log(`Bulk email sent to ${recipients.length} recipients`);
+      // Bulk email sent successfully
       return results;
     } catch (error) {
       console.error("Error sending bulk email:", error);

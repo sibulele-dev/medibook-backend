@@ -1,22 +1,21 @@
-const { pgTable, text, timestamp, boolean } = require("drizzle-orm/pg-core");
-const { nanoid } = require("nanoid");
-const { users } = require("./user");
-const { practices } = require("./practice");
+const { pgTable, text, integer, boolean, timestamp } = require("drizzle-orm/pg-core");
 
-// Doctor table schema - updated to new requirements
+// Doctor table schema
 const doctors = pgTable("doctors", {
-  id: text("id")
-    .primaryKey()
-    .notNull()
-    .$defaultFn(() => nanoid(25))
-    .references(() => users.id),
-  practiceId: text("practice_id")
-    .notNull()
-    .references(() => practices.id),
-  specialty: text("specialty").notNull(),
-  bio: text("bio"), // Optional
-  profilePicUrl: text("profile_pic_url"), // Optional
-  isActive: boolean("is_active").notNull().default(true),
+  id: text().primaryKey().notNull(),
+  practiceId: text("practice_id").notNull(),
+  specialty: text().notNull(),
+  bio: text(),
+  qualifications: text(),
+  hpcsa: text(),
+  experience: integer(),
+  languages: text(),
+  telehealth: text(),
+  status: text().default('pending'),
+  profilePicUrl: text("profile_pic_url"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull(),
 });
 
 module.exports = {

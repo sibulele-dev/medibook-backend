@@ -1,7 +1,27 @@
 const db = require("../db");
-const { doctors, createDoctorData } = require("../schema/doctor");
-const { users, createUser } = require("../schema/user");
+const { doctors, users } = require("../schema");
 const { eq } = require("drizzle-orm");
+const { nanoid } = require("nanoid");
+
+// Helper function to create a new user object
+const createUser = (userData) => {
+  return {
+    ...userData,
+    id: nanoid(25),
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+};
+
+// Helper function to create doctor data
+const createDoctorData = (doctorData) => {
+  return {
+    ...doctorData,
+    id: nanoid(25),
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+};
 
 class DoctorService {
   async getAllDoctors() {
@@ -13,10 +33,10 @@ class DoctorService {
           email: users.email,
           firstName: users.firstName,
           lastName: users.lastName,
+          phoneNumber: users.phone, // Get phone from users table as 'phone'
           role: users.role,
           doctorId: doctors.id,
-          specialization: doctors.specialization,
-          phoneNumber: doctors.phoneNumber,
+          specialization: doctors.specialty, // Map specialty to specialization
           practiceId: doctors.practiceId,
           licenseNumber: doctors.licenseNumber,
           experience: doctors.experience,
@@ -64,6 +84,7 @@ class DoctorService {
         email,
         firstName,
         lastName,
+        phone: phoneNumber, // Store phone number in users table as 'phone'
         role: "doctor",
         isActive: true,
         emailVerified: true, // Supabase handles email verification
@@ -73,8 +94,7 @@ class DoctorService {
       // Create doctor
       const newDoctor = createDoctorData({
         userId: insertedUser.id,
-        specialization,
-        phoneNumber,
+        specialty: specialization, // Map specialization to specialty
         practiceId,
         licenseNumber,
         experience,

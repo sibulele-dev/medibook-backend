@@ -1,15 +1,28 @@
 const { pgTable, text, pgEnum } = require("drizzle-orm/pg-core");
+<<<<<<< HEAD
 
 const departmentNameEnum = pgEnum("department_name", [
+=======
+const { nanoid } = require("nanoid");
+
+// Department enums
+const departmentName = pgEnum("department_name", [
+>>>>>>> login
   "super_admin",
   "onboarding",
   "sales",
   "support",
   "billing_accounts",
+<<<<<<< HEAD
   "compliance"
 ]);
 
 const departmentPrivilegeEnum = pgEnum("department_privilege", [
+=======
+  "compliance",
+]);
+const departmentPrivilege = pgEnum("department_privilege", [
+>>>>>>> login
   "full_access",
   "manage_departments",
   "manage_practices",
@@ -33,6 +46,7 @@ const departmentPrivilegeEnum = pgEnum("department_privilege", [
   "send_invoices",
   "verify_credentials",
   "approve_hpcsa_bhf",
+<<<<<<< HEAD
   "manage_document_verification"
 ]);
 
@@ -43,3 +57,22 @@ const departments = pgTable("departments", {
 });
 
 module.exports = { departments, departmentNameEnum, departmentPrivilegeEnum }; 
+=======
+  "manage_document_verification",
+]);
+
+// Department table schema
+const departments = pgTable("departments", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => nanoid(25)),
+  name: departmentName().notNull(),
+  privileges: departmentPrivilege().array().notNull(),
+});
+
+module.exports = {
+  departments,
+  departmentName,
+  departmentPrivilege,
+};
+>>>>>>> login

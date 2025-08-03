@@ -1,9 +1,15 @@
+<<<<<<< HEAD
 const { pgTable, text, timestamp, primaryKey } = require("drizzle-orm/pg-core");
 const { users } = require("./user");
 const { departments } = require("./department");
+=======
+const { pgTable, text, timestamp } = require("drizzle-orm/pg-core");
+const { nanoid } = require("nanoid");
+>>>>>>> login
 
-// Admin table schema - extends user with admin-specific fields
+// Admin table schema
 const admins = pgTable("admins", {
+<<<<<<< HEAD
   id: text("id") // admin ID (same as users.id)
     .primaryKey()
     .notNull()
@@ -40,3 +46,14 @@ const adminPermissions = pgTable(
 );
 
 module.exports = { admins, permissions, adminPermissions };
+=======
+  id: text("id").primaryKey().$defaultFn(() => nanoid(25)),
+  departmentId: text("department_id").notNull(),
+  createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull(),
+});
+
+module.exports = {
+  admins,
+};
+>>>>>>> login

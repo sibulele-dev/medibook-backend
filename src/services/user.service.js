@@ -33,7 +33,6 @@ const createUser = (userData) => {
 const createDoctorData = (doctorData) => {
   return {
     ...doctorData,
-    id: nanoid(25),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -563,13 +562,11 @@ class UserService {
           .values(newUser)
           .returning();
         const doctorData = createDoctorData({
-          userId: insertedUser.id,
-          specialization: userData.specialization || "General Practice",
-          phoneNumber: userData.phoneNumber || "",
-          practiceId: userData.practiceId || "",
-          licenseNumber: userData.licenseNumber || null,
-          experience: userData.experience || null,
+          id: insertedUser.id,
+          practiceId: userData.practiceId || null, // Allow null practice ID,
+          specialty: userData.specialization || "General Practice",
           bio: userData.bio || null,
+          experience: userData.experience || null,
           isActive: true,
         });
         await tx.insert(doctors).values(doctorData);
@@ -620,13 +617,11 @@ class UserService {
           .values(newUser)
           .returning();
         const doctorData = createDoctorData({
-          userId: insertedUser.id,
-          specialization: userData.specialization || "General Practice",
-          phoneNumber: userData.phoneNumber || "",
-          practiceId: userData.practiceId || "",
-          licenseNumber: userData.licenseNumber || null,
-          experience: userData.experience || null,
+          id: insertedUser.id,
+          practiceId: userData.practiceId || null, // Allow null practice ID,
+          specialty: userData.specialization || "General Practice",
           bio: userData.bio || null,
+          experience: userData.experience || null,
           isActive: true,
         });
         await tx.insert(doctors).values(doctorData);
@@ -669,6 +664,7 @@ class UserService {
         createdAt: users.createdAt,
         updatedAt: users.updatedAt,
         passwordHash: users.passwordHash,
+        phone: users.phone,
         departmentName: departments.name,
       })
       .from(users)
@@ -676,13 +672,16 @@ class UserService {
       .leftJoin(departments, eq(admins.departmentId, departments.id))
       .where(eq(users.email, normalizedEmail));
 
-    if (!user) throw new Error("User not found");
+    if (!user) throw new Error("Invalid email or password");
     if (!user.emailVerified)
       throw new Error(
-        "Email not verified. Please verify your email before logging in."
+        "Email not verified. Please check your email and click the verification link before logging in."
       );
+    if (!user.isActive) {
+      throw new Error("Account is deactivated. Please contact your administrator.");
+    }
     const valid = await verifyPassword(password, user.passwordHash);
-    if (!valid) throw new Error("Invalid credentials");
+    if (!valid) throw new Error("Invalid email or password");
 
     // Ensure admin users have admin record with department
     if (user.role === "admin") {
@@ -699,8 +698,19 @@ class UserService {
     const { passwordHash, departmentName, ...userWithoutSensitive } =
       processedUser;
 
-    const token = generateJWT(userWithoutSensitive);
-    return { token, user: userWithoutSensitive };
+    // Generate both access and refresh tokens
+    const {
+      generateAccessToken,
+      generateRefreshToken,
+    } = require("../utils/jwt");
+    const accessToken = generateAccessToken(userWithoutSensitive);
+    const refreshToken = generateRefreshToken(userWithoutSensitive);
+
+    return {
+      token: accessToken,
+      refreshToken: refreshToken,
+      user: userWithoutSensitive,
+    };
   }
 
   // Get user by email with improved error handling

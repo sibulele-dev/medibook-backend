@@ -15,6 +15,13 @@
       "when": 1753548945236,
       "tag": "0001_new_nehzno",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1753894377960,
+      "tag": "0002_nosy_masque",
+      "breakpoints": true
     }
   ]
 }

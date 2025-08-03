@@ -314,20 +314,42 @@ class UserController {
   async login(req, res) {
     try {
       const { email, password } = req.body;
+      const clientIP = req.ip || req.connection.remoteAddress;
+
+      console.log(`Login attempt from IP: ${clientIP}, Email: ${email}`);
+
       if (!email || !password) {
+        console.log(`Login failed - Missing credentials from IP: ${clientIP}`);
         return res.status(400).json({
           success: false,
           message: "Email and password are required",
         });
       }
-      const { token, user } = await userService.loginUser(email, password);
+
+      const { token, refreshToken, user } = await userService.loginUser(
+        email,
+        password
+      );
+
+      // Reset rate limit on successful login
+      const { resetRateLimit } = require("../middleware/rateLimit.middleware");
+      await resetRateLimit(req, res, () => {});
+
+      console.log(
+        `Successful login for user: ${user.email}, Role: ${user.role}, IP: ${clientIP}`
+      );
+
       res.status(200).json({
         success: true,
         token,
+        refreshToken,
         user,
       });
     } catch (error) {
-      console.error("Login error:", error);
+      const clientIP = req.ip || req.connection.remoteAddress;
+      console.error(
+        `Login error from IP: ${clientIP}, Email: ${req.body.email}, Error: ${error.message}`
+      );
       return res.status(401).json({
         success: false,
         message: error.message || "Invalid credentials",
@@ -801,14 +823,14 @@ class UserController {
         });
       }
 
-      // For now, we'll implement a simple refresh mechanism
-      // In production, you should verify the refresh token against a database/Redis
+      // Verify refresh token using the correct secret
       const jwt = require("jsonwebtoken");
-      const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
+      const JWT_REFRESH_SECRET =
+        process.env.JWT_REFRESH_SECRET || "your-refresh-secret-key";
 
       let payload;
       try {
-        payload = jwt.verify(refreshToken, JWT_SECRET);
+        payload = jwt.verify(refreshToken, JWT_REFRESH_SECRET);
       } catch (err) {
         return res.status(401).json({
           success: false,
@@ -816,8 +838,18 @@ class UserController {
         });
       }
 
+      // Verify refresh token exists in Redis
+      const redisClient = require("../utils/redis");
+      const storedUserId = await redisClient.get(refreshToken);
+      if (!storedUserId || storedUserId !== payload.id.toString()) {
+        return res.status(401).json({
+          success: false,
+          message: "Refresh token not found or invalid",
+        });
+      }
+
       // Get user from database
-      const user = await userService.getUserById(payload.userId);
+      const user = await userService.getUserById(payload.id);
       if (!user) {
         return res.status(401).json({
           success: false,
@@ -828,12 +860,12 @@ class UserController {
       // Generate new access token
       const accessToken = jwt.sign(
         {
-          userId: user.id,
+          id: user.id,
           email: user.email,
           role: user.role,
         },
         JWT_SECRET,
-        { expiresIn: "1h" }
+        { expiresIn: "24h" }
       );
 
       res.json({
@@ -856,6 +888,30 @@ class UserController {
       res.status(500).json({
         success: false,
         message: error.message || "Internal server error",
+      });
+    }
+  }
+
+  // Logout endpoint
+  async logout(req, res) {
+    try {
+      const { refreshToken } = req.body;
+
+      if (refreshToken) {
+        // Remove refresh token from Redis
+        const redisClient = require("../utils/redis");
+        await redisClient.del(refreshToken);
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Logged out successfully",
+      });
+    } catch (error) {
+      console.error("Logout error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal server error",
       });
     }
   }

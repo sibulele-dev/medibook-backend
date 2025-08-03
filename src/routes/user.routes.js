@@ -1,10 +1,11 @@
 const express = require("express");
 const userController = require("../controllers/user.controller");
 const requireDepartment = require("../middleware/department.middleware");
+const { rateLimitMiddleware, resetRateLimit } = require("../middleware/rateLimit.middleware");
 const router = express.Router();
 
 // Public routes
-router.post("/login", userController.login);
+router.post("/login", rateLimitMiddleware, userController.login);
 router.get("/check-email", userController.checkEmailRegistration);
 router.get("/status", userController.getApiStatus);
 
@@ -41,6 +42,9 @@ router.post("/set-initial-password", userController.setInitialPassword);
 
 // Add refresh token endpoint
 router.post("/refresh", userController.refreshToken);
+
+// Add logout endpoint
+router.post("/logout", userController.logout);
 
 // Password management routes
 router.get("/password/requirements", userController.getPasswordRequirements);

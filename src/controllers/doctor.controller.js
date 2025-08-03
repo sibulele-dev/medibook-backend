@@ -15,33 +15,50 @@ class DoctorController {
     }
   }
 
+  async getDoctorById(req, res) {
+    try {
+      const { id } = req.params;
+      const doctor = await doctorService.getDoctorById(id);
+
+      if (!doctor) {
+        return res.status(404).json({
+          success: false,
+          message: "Doctor not found",
+        });
+      }
+
+      res.status(200).json({ success: true, data: doctor });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message || "Failed to fetch doctor",
+      });
+    }
+  }
+
   async registerDoctor(req, res) {
     try {
       const {
         email,
         firstName,
         lastName,
-        specialization,
+        specialty,
         phoneNumber,
         practiceId,
-        licenseNumber,
-        experience,
         bio,
+        qualifications,
+        hpcsa,
+        experience,
+        languages,
+        telehealth,
       } = req.body;
 
       // Validate required fields
-      if (
-        !email ||
-        !firstName ||
-        !lastName ||
-        !specialization ||
-        !phoneNumber ||
-        !practiceId
-      ) {
+      if (!email || !firstName || !lastName || !specialty || !phoneNumber) {
         return res.status(400).json({
           success: false,
           message:
-            "All fields are required: email, firstName, lastName, specialization, phoneNumber, practiceId",
+            "Required fields: email, firstName, lastName, specialty, phoneNumber. practiceId is optional.",
         });
       }
 
@@ -59,20 +76,21 @@ class DoctorController {
         email: normalizedEmail,
         firstName,
         lastName,
-        specialization,
+        specialty,
         phoneNumber,
         practiceId,
-        licenseNumber,
-        experience,
         bio,
+        qualifications,
+        hpcsa,
+        experience,
+        languages,
+        telehealth,
       };
 
       // Register doctor without password
-      const newDoctor = await userService.registerDoctorWithoutPassword(
-        doctorData
-      );
+      const newDoctor = await doctorService.registerDoctor(doctorData);
 
-      // Generate verification token
+      // Generate verification token for email verification
       const verificationToken = userService.generateAccountVerificationToken(
         newDoctor.id
       );
@@ -102,12 +120,67 @@ class DoctorController {
     } catch (error) {
       console.error("Doctor registration error:", error);
       const isValidationError =
-        error.message && error.message.startsWith("Validation failed:");
+        error.message && error.message.startsWith("Missing required fields:");
       return res.status(isValidationError ? 400 : 500).json({
         success: false,
         message: isValidationError
           ? error.message
           : "Could not register doctor. Please try again later.",
+      });
+    }
+  }
+
+  async updateDoctor(req, res) {
+    try {
+      const { id } = req.params;
+      const updateData = req.body;
+
+      // Validate required fields for update
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          message: "Doctor ID is required",
+        });
+      }
+
+      const updatedDoctor = await doctorService.updateDoctor(id, updateData);
+
+      res.status(200).json({
+        success: true,
+        message: "Doctor updated successfully",
+        data: updatedDoctor,
+      });
+    } catch (error) {
+      console.error("Doctor update error:", error);
+      res.status(500).json({
+        success: false,
+        message: error.message || "Failed to update doctor",
+      });
+    }
+  }
+
+  async deleteDoctor(req, res) {
+    try {
+      const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          message: "Doctor ID is required",
+        });
+      }
+
+      await doctorService.deleteDoctor(id);
+
+      res.status(200).json({
+        success: true,
+        message: "Doctor deleted successfully",
+      });
+    } catch (error) {
+      console.error("Doctor deletion error:", error);
+      res.status(500).json({
+        success: false,
+        message: error.message || "Failed to delete doctor",
       });
     }
   }

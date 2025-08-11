@@ -1,31 +1,34 @@
 const db = require("../db");
-<<<<<<< HEAD
-const { practices } = require("../schema/practice");
+const { practices } = require("../schema");
 const { doctors } = require("../schema/doctor");
 const { users } = require("../schema/user");
-=======
-const { practices, users } = require("../schema");
->>>>>>> login
 const { eq, like, desc, asc, and, or, count, sql } = require("drizzle-orm");
 const { nanoid } = require("nanoid");
 
 // Helper function to validate practice data
-const validatePracticeData = (practiceData) => {
-  const errors = [];
+const validatePracticeData = (data) => {
+  const errors = {};
 
-  if (!practiceData.name || typeof practiceData.name !== "string") {
-    errors.push("Practice name is required");
+  if (!data.name?.trim()) {
+    errors.name = "Practice name is required";
   }
 
-  if (!practiceData.address || typeof practiceData.address !== "string") {
-    errors.push("Practice address is required");
+  if (!data.address?.trim()) {
+    errors.address = "Practice address is required";
   }
 
-  if (!practiceData.phone || typeof practiceData.phone !== "string") {
-    errors.push("Practice phone number is required");
+  if (!data.phone?.trim()) {
+    errors.phone = "Practice phone is required";
   }
 
-  return errors;
+  if (!data.practiceNumber?.trim()) {
+    errors.practiceNumber = "Practice number is required";
+  }
+
+  return {
+    isValid: Object.keys(errors).length === 0,
+    errors,
+  };
 };
 
 // Helper function to create practice data
@@ -72,52 +75,6 @@ const updatePracticeData = (practiceData) => {
 
   return updateData;
 };
-
-// Validation function for practice data
-function validatePracticeData(data) {
-  const errors = [];
-  if (!data.name || typeof data.name !== 'string') errors.push('Practice name is required');
-  if (!data.address || typeof data.address !== 'string') errors.push('Address is required');
-  if (!data.city || typeof data.city !== 'string') errors.push('City is required');
-  if (!data.province || typeof data.province !== 'string') errors.push('Province is required');
-  if (!data.zip || typeof data.zip !== 'string') errors.push('Zip code is required');
-  if (!data.phone || typeof data.phone !== 'string') errors.push('Phone is required');
-  if (!data.practiceContact || typeof data.practiceContact !== 'string') errors.push('Practice contact info is required');
-  if (!data.practiceNumber || typeof data.practiceNumber !== 'string') errors.push('Practice number is required');
-  return errors;
-}
-
-// Create a new practice data object for insertion
-function createPracticeData(data) {
-  return {
-    name: data.name,
-    address: data.address,
-    city: data.city || '',
-    province: data.province || '',
-    zip: data.zip || '',
-    country: data.country || '',
-    phone: data.phone,
-    practiceContact: data.practiceContact,
-    practiceNumber: data.practiceNumber,
-    status: data.status || 'active',
-  };
-}
-
-// Update practice data object
-function updatePracticeData(data) {
-  const updateData = {};
-  if (data.name) updateData.name = data.name;
-  if (data.address) updateData.address = data.address;
-  if (data.city) updateData.city = data.city;
-  if (data.province) updateData.province = data.province;
-  if (data.zip) updateData.zip = data.zip;
-  if (data.country) updateData.country = data.country;
-  if (data.phone) updateData.phone = data.phone;
-  if (data.practiceContact) updateData.practiceContact = data.practiceContact;
-  if (data.practiceNumber) updateData.practiceNumber = data.practiceNumber;
-  if (data.status) updateData.status = data.status;
-  return updateData;
-}
 
 class PracticeService {
   // Check if practices table exists
@@ -179,7 +136,7 @@ class PracticeService {
           status: practices.status,
           createdAt: practices.createdAt,
           updatedAt: practices.updatedAt,
-          doctorCount: sql`COUNT(doctors.id)`
+          doctorCount: sql`COUNT(doctors.id)`,
         })
         .from(practices)
         .leftJoin(doctors, eq(practices.id, doctors.practiceId))
@@ -246,14 +203,16 @@ class PracticeService {
   async createPractice(practiceData) {
     try {
       console.log("Creating practice with data:", practiceData);
-      
+
       // Check if practices table exists
       const tableExists = await this.checkTableExists();
       if (!tableExists) {
         console.error("Practices table does not exist");
-        throw new Error("Database table 'practices' does not exist. Please run database migrations.");
+        throw new Error(
+          "Database table 'practices' does not exist. Please run database migrations."
+        );
       }
-      
+
       // Validate practice data
       const validationErrors = validatePracticeData(practiceData);
       if (validationErrors.length > 0) {

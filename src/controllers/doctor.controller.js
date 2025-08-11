@@ -15,27 +15,6 @@ class DoctorController {
     }
   }
 
-  async getDoctorById(req, res) {
-    try {
-      const { id } = req.params;
-      const doctor = await doctorService.getDoctorById(id);
-
-      if (!doctor) {
-        return res.status(404).json({
-          success: false,
-          message: "Doctor not found",
-        });
-      }
-
-      res.status(200).json({ success: true, data: doctor });
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: error.message || "Failed to fetch doctor",
-      });
-    }
-  }
-
   async registerDoctor(req, res) {
     try {
       const {
@@ -118,15 +97,25 @@ class DoctorController {
         },
       });
     } catch (error) {
-<<<<<<< HEAD
       // User-friendly error handling
       if (error.message && error.message.startsWith("Validation failed:")) {
         return res.status(400).json({ success: false, message: error.message });
       }
-      if (error.message && error.message.toLowerCase().includes("duplicate") && error.message.toLowerCase().includes("email")) {
-        return res.status(400).json({ success: false, message: "A user with this email already exists." });
+      if (
+        error.message &&
+        error.message.toLowerCase().includes("duplicate") &&
+        error.message.toLowerCase().includes("email")
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "A user with this email already exists.",
+        });
       }
-      res.status(400).json({ success: false, message: "An unexpected error occurred. Please check your input and try again." });
+      res.status(400).json({
+        success: false,
+        message:
+          "An unexpected error occurred. Please check your input and try again.",
+      });
     }
   }
 
@@ -134,55 +123,27 @@ class DoctorController {
     try {
       const doctor = await doctorService.getDoctorById(req.params.id);
       if (!doctor) {
-        return res.status(404).json({ success: false, message: "Doctor not found" });
+        return res
+          .status(404)
+          .json({ success: false, message: "Doctor not found" });
       }
       res.status(200).json({ success: true, data: doctor });
     } catch (error) {
       res.status(500).json({
         success: false,
         message: error.message || "Failed to fetch doctor",
-=======
-      console.error("Doctor registration error:", error);
-      const isValidationError =
-        error.message && error.message.startsWith("Missing required fields:");
-      return res.status(isValidationError ? 400 : 500).json({
-        success: false,
-        message: isValidationError
-          ? error.message
-          : "Could not register doctor. Please try again later.",
->>>>>>> login
       });
     }
   }
 
   async updateDoctor(req, res) {
     try {
-<<<<<<< HEAD
-      const updatedDoctor = await doctorService.updateDoctor(req.params.id, req.body);
+      const updatedDoctor = await doctorService.updateDoctor(
+        req.params.id,
+        req.body
+      );
       res.status(200).json({ success: true, data: updatedDoctor });
     } catch (error) {
-=======
-      const { id } = req.params;
-      const updateData = req.body;
-
-      // Validate required fields for update
-      if (!id) {
-        return res.status(400).json({
-          success: false,
-          message: "Doctor ID is required",
-        });
-      }
-
-      const updatedDoctor = await doctorService.updateDoctor(id, updateData);
-
-      res.status(200).json({
-        success: true,
-        message: "Doctor updated successfully",
-        data: updatedDoctor,
-      });
-    } catch (error) {
-      console.error("Doctor update error:", error);
->>>>>>> login
       res.status(500).json({
         success: false,
         message: error.message || "Failed to update doctor",
@@ -192,29 +153,11 @@ class DoctorController {
 
   async deleteDoctor(req, res) {
     try {
-<<<<<<< HEAD
       await doctorService.deleteDoctor(req.params.id);
-      res.status(200).json({ success: true, message: "Doctor deleted successfully" });
+      res
+        .status(200)
+        .json({ success: true, message: "Doctor deleted successfully" });
     } catch (error) {
-=======
-      const { id } = req.params;
-
-      if (!id) {
-        return res.status(400).json({
-          success: false,
-          message: "Doctor ID is required",
-        });
-      }
-
-      await doctorService.deleteDoctor(id);
-
-      res.status(200).json({
-        success: true,
-        message: "Doctor deleted successfully",
-      });
-    } catch (error) {
-      console.error("Doctor deletion error:", error);
->>>>>>> login
       res.status(500).json({
         success: false,
         message: error.message || "Failed to delete doctor",

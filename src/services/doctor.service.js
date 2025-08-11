@@ -1,8 +1,7 @@
 const db = require("../db");
-<<<<<<< HEAD
 const { doctors } = require("../schema/doctor");
 const { users } = require("../schema/user");
-const { createUser, hashPassword } = require("../services/user.service");
+const userService = require("../services/user.service");
 const { eq } = require("drizzle-orm");
 const { nanoid } = require("nanoid");
 
@@ -30,38 +29,9 @@ function validateDoctorData(data) {
   if (!data.firstName || typeof data.firstName !== 'string') errors.push('First name is required');
   if (!data.lastName || typeof data.lastName !== 'string') errors.push('Last name is required');
   if (!data.specialty || typeof data.specialty !== 'string') errors.push('Specialty is required');
-  if (!data.phone || typeof data.phone !== 'string') errors.push('Phone number is required');
-  if (!data.practiceId || typeof data.practiceId !== 'string') errors.push('Practice ID is required');
-  if (!data.bio || typeof data.bio !== 'string') errors.push('Bio is required');
-  if (!data.qualifications || typeof data.qualifications !== 'string') errors.push('Qualifications are required');
-  if (!data.experience || typeof data.experience !== 'number') errors.push('Years of experience is required');
+  if (!data.phoneNumber || typeof data.phoneNumber !== 'string') errors.push('Phone number is required');
   return errors;
 }
-=======
-const { doctors, users } = require("../schema");
-const { eq } = require("drizzle-orm");
-const { nanoid } = require("nanoid");
-const emailService = require("./email.service");
-
-// Helper function to create a new user object
-const createUser = (userData) => {
-  return {
-    ...userData,
-    id: nanoid(25),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-};
-
-// Helper function to create doctor data
-const createDoctorData = (doctorData) => {
-  return {
-    ...doctorData,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-};
->>>>>>> login
 
 class DoctorService {
   async getAllDoctors() {
@@ -77,7 +47,6 @@ class DoctorService {
           role: users.role,
           phone: users.phone,
           doctorId: doctors.id,
-<<<<<<< HEAD
           practiceId: doctors.practiceId,
           specialty: doctors.specialty,
           bio: doctors.bio,
@@ -88,17 +57,6 @@ class DoctorService {
           telehealth: doctors.telehealth,
           status: doctors.status,
           profilePicUrl: doctors.profilePicUrl,
-=======
-          specialty: doctors.specialty,
-          practiceId: doctors.practiceId,
-          hpcsa: doctors.hpcsa,
-          experience: doctors.experience,
-          bio: doctors.bio,
-          qualifications: doctors.qualifications,
-          languages: doctors.languages,
-          telehealth: doctors.telehealth,
-          status: doctors.status,
->>>>>>> login
           isActive: doctors.isActive,
           createdAt: doctors.createdAt,
           updatedAt: doctors.updatedAt,
@@ -139,152 +97,7 @@ class DoctorService {
         })
         .from(doctors)
         .innerJoin(users, eq(doctors.id, users.id))
-        .where(eq(doctors.id, doctorId));
-
-      return doctor;
-    } catch (error) {
-      throw new Error("Failed to fetch doctor");
-    }
-  }
-
-  async registerDoctor(doctorData) {
-<<<<<<< HEAD
-    try {
-      // 1. Validate input
-      const validationErrors = validateDoctorData(doctorData);
-      if (validationErrors.length > 0) {
-        throw new Error(validationErrors.join(", "));
-      }
-
-      // 2. Create user
-      const passwordHash = await hashPassword(doctorData.password || "defaultPassword123");
-      const newUser = createUser({
-        email: doctorData.email,
-        firstName: doctorData.firstName,
-        lastName: doctorData.lastName,
-=======
-    // doctorData: { email, firstName, lastName, specialty, phoneNumber, practiceId, bio, qualifications, hpcsa, experience, languages, telehealth }
-    const {
-      email,
-      firstName,
-      lastName,
-      specialty,
-      phoneNumber,
-      practiceId,
-      bio,
-      qualifications,
-      hpcsa,
-      experience,
-      languages,
-      telehealth,
-    } = doctorData;
-
-    if (!email || !firstName || !lastName || !specialty || !phoneNumber) {
-      throw new Error(
-        "Missing required fields: email, firstName, lastName, specialty, phoneNumber"
-      );
-    }
-
-    return await db.transaction(async (tx) => {
-      // Create user without password (will be set later)
-      const newUser = createUser({
-        email: email.toLowerCase().trim(),
-        firstName,
-        lastName,
-        phone: phoneNumber,
->>>>>>> login
-        role: "doctor",
-        phone: doctorData.phone,
-        isActive: true,
-<<<<<<< HEAD
-        emailVerified: true,
-        passwordHash,
-      });
-      const [insertedUser] = await db.insert(users).values(newUser).returning();
-
-      // 3. Prepare doctor data
-      const newDoctor = createDoctorData({
-        userId: insertedUser.id,
-        specialty: doctorData.specialty,
-        practiceId: doctorData.practiceId,
-        bio: doctorData.bio,
-        qualifications: doctorData.qualifications,
-        hpcsa: doctorData.hpcsa,
-        experience: doctorData.experience,
-        languages: doctorData.languages,
-        telehealth: doctorData.telehealth,
-        status: doctorData.status || 'pending',
-        isActive: true,
-      });
-
-      // 4. Insert doctor
-      const [insertedDoctor] = await db.insert(doctors).values(newDoctor).returning();
-=======
-        emailVerified: false, // Will be verified when they set password
-        passwordHash: null, // No password initially
-      });
-
-      const [insertedUser] = await tx.insert(users).values(newUser).returning();
-
-      // Create doctor record
-      const newDoctor = createDoctorData({
-        id: insertedUser.id, // Use the same ID as the user
-        specialty,
-        practiceId: practiceId || null,
-        bio: bio || null,
-        qualifications: qualifications || null,
-        hpcsa: hpcsa || null,
-        experience: experience ? parseInt(experience) : null,
-        languages: languages || null,
-        telehealth: telehealth || null,
-        status: "pending",
-        isActive: true,
-      });
-
-      const [insertedDoctor] = await tx
-        .insert(doctors)
-        .values(newDoctor)
-        .returning();
->>>>>>> login
-
-      return {
-        ...insertedUser,
-        ...insertedDoctor,
-      };
-    } catch (error) {
-      console.error("Register doctor error:", error);
-      throw error;
-    }
-  }
-
-  async getDoctorById(userId) {
-    try {
-      const doctor = await db
-        .select({
-          userId: users.id,
-          email: users.email,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          role: users.role,
-          phone: users.phone,
-          doctorId: doctors.id,
-          practiceId: doctors.practiceId,
-          specialty: doctors.specialty,
-          bio: doctors.bio,
-          qualifications: doctors.qualifications,
-          hpcsa: doctors.hpcsa,
-          experience: doctors.experience,
-          languages: doctors.languages,
-          telehealth: doctors.telehealth,
-          status: doctors.status,
-          profilePicUrl: doctors.profilePicUrl,
-          isActive: doctors.isActive,
-          createdAt: doctors.createdAt,
-          updatedAt: doctors.updatedAt,
-        })
-        .from(doctors)
-        .innerJoin(users, eq(doctors.id, users.id))
-        .where(eq(users.id, userId));
+        .where(eq(users.id, doctorId));
       if (!doctor || doctor.length === 0) {
         return null;
       }
@@ -295,59 +108,41 @@ class DoctorService {
     }
   }
 
-  async updateDoctor(userId, updateData) {
+  async registerDoctor(doctorData) {
     try {
-      // Update users table
-      const userUpdateData = {};
-      if (updateData.firstName) userUpdateData.firstName = updateData.firstName;
-      if (updateData.lastName) userUpdateData.lastName = updateData.lastName;
-      if (updateData.email) userUpdateData.email = updateData.email;
-      if (updateData.phone) userUpdateData.phone = updateData.phone;
-
-      if (Object.keys(userUpdateData).length > 0) {
-        await db.update(users)
-          .set(userUpdateData)
-          .where(eq(users.id, userId));
+      // Validate required fields
+      const validationErrors = validateDoctorData(doctorData);
+      if (validationErrors.length > 0) {
+        throw new Error(`Validation failed: ${validationErrors.join(', ')}`);
       }
 
-      // Update doctors table
-      const doctorUpdateData = {};
-      if (updateData.specialty) doctorUpdateData.specialty = updateData.specialty;
-      if (updateData.practiceId) doctorUpdateData.practiceId = updateData.practiceId;
-      if (updateData.bio) doctorUpdateData.bio = updateData.bio;
-      if (updateData.qualifications) doctorUpdateData.qualifications = updateData.qualifications;
-      if (updateData.hpcsa) doctorUpdateData.hpcsa = updateData.hpcsa;
-      if (updateData.experience) doctorUpdateData.experience = updateData.experience;
-      if (updateData.languages) doctorUpdateData.languages = updateData.languages;
-      if (updateData.telehealth) doctorUpdateData.telehealth = updateData.telehealth;
-      if (updateData.status) doctorUpdateData.status = updateData.status;
-      if (updateData.profilePicUrl) doctorUpdateData.profilePicUrl = updateData.profilePicUrl;
-      if (updateData.isActive !== undefined) doctorUpdateData.isActive = updateData.isActive;
+      // Use the user service to register doctor without password
+      const userData = {
+        email: doctorData.email,
+        firstName: doctorData.firstName,
+        lastName: doctorData.lastName,
+        phone: doctorData.phoneNumber,
+        practiceId: doctorData.practiceId,
+        specialization: doctorData.specialty,
+        bio: doctorData.bio,
+        experience: doctorData.experience,
+      };
 
-      if (Object.keys(doctorUpdateData).length > 0) {
-        await db.update(doctors)
-          .set(doctorUpdateData)
-          .where(eq(doctors.id, userId));
-      }
+      const newDoctor = await userService.registerDoctorWithoutPassword(userData);
 
-      // Return the updated doctor
-      return this.getDoctorById(userId);
+      // Return the doctor data with additional fields
+      return {
+        ...newDoctor,
+        specialty: doctorData.specialty,
+        qualifications: doctorData.qualifications,
+        hpcsa: doctorData.hpcsa,
+        languages: doctorData.languages,
+        telehealth: doctorData.telehealth,
+        role: "doctor",
+      };
     } catch (error) {
-      console.error("Update doctor error:", error);
-      throw new Error("Failed to update doctor");
-    }
-  }
-
-  async deleteDoctor(userId) {
-    try {
-      // Delete from doctors table first (FK constraint)
-      await db.delete(doctors).where(eq(doctors.id, userId));
-      // Then delete from users table
-      await db.delete(users).where(eq(users.id, userId));
-      return { success: true };
-    } catch (error) {
-      console.error("Delete doctor error:", error);
-      throw new Error("Failed to delete doctor");
+      console.error("Register doctor error:", error);
+      throw error;
     }
   }
 

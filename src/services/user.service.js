@@ -1118,8 +1118,4 @@ module.exports = new UserService();
 module.exports.hashPassword = hashPassword;
 module.exports.verifyPassword = verifyPassword;
 module.exports.generateJWT = generateJWT;
-<<<<<<< HEAD
 module.exports.createUser = createUser;
-=======
-module.exports.generateVerificationToken = generateVerificationToken;
->>>>>>> login

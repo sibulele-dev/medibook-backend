@@ -1,9 +1,5 @@
 {
-<<<<<<< HEAD
   "id": "a8dc607c-8fe6-41aa-98cc-62f5a1c94915",
-=======
-  "id": "a3305b9e-d16c-4581-b07a-c8a243414980",
->>>>>>> login
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -54,21 +50,12 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-<<<<<<< HEAD
         "admins_department_id_departments_id_fk": {
           "name": "admins_department_id_departments_id_fk",
           "tableFrom": "admins",
           "tableTo": "departments",
           "columnsFrom": [
             "department_id"
-=======
-        "admins_id_users_id_fk": {
-          "name": "admins_id_users_id_fk",
-          "tableFrom": "admins",
-          "tableTo": "users",
-          "columnsFrom": [
-            "id"
->>>>>>> login
           ],
           "columnsTo": [
             "id"
@@ -83,13 +70,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-<<<<<<< HEAD
     "public.permissions": {
       "name": "permissions",
-=======
-    "public.departments": {
-      "name": "departments",
->>>>>>> login
       "schema": "",
       "columns": {
         "id": {
@@ -100,7 +82,6 @@
         },
         "name": {
           "name": "name",
-<<<<<<< HEAD
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -110,26 +91,12 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
-=======
-          "type": "department_name",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "privileges": {
-          "name": "privileges",
-          "type": "department_privilege[]",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
->>>>>>> login
         }
       },
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-<<<<<<< HEAD
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -223,8 +190,6 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-=======
->>>>>>> login
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -357,40 +322,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-<<<<<<< HEAD
-=======
-    "public.permissions": {
-      "name": "permissions",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
->>>>>>> login
     "public.users": {
       "name": "users",
       "schema": "",
@@ -582,69 +513,6 @@
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
-<<<<<<< HEAD
-=======
-    },
-    "public.admin_permissions": {
-      "name": "admin_permissions",
-      "schema": "",
-      "columns": {
-        "admin_id": {
-          "name": "admin_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "permission_id": {
-          "name": "permission_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "admin_permissions_admin_id_admins_id_fk": {
-          "name": "admin_permissions_admin_id_admins_id_fk",
-          "tableFrom": "admin_permissions",
-          "tableTo": "admins",
-          "columnsFrom": [
-            "admin_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "admin_permissions_permission_id_permissions_id_fk": {
-          "name": "admin_permissions_permission_id_permissions_id_fk",
-          "tableFrom": "admin_permissions",
-          "tableTo": "permissions",
-          "columnsFrom": [
-            "permission_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "admin_permissions_admin_id_permission_id_pk": {
-          "name": "admin_permissions_admin_id_permission_id_pk",
-          "columns": [
-            "admin_id",
-            "permission_id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
->>>>>>> login
     }
   },
   "enums": {

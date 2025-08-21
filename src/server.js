@@ -20,7 +20,7 @@ app.use(
     origin:
       process.env.NODE_ENV === "production"
         ? [process.env.FRONTEND_URL, "https://your-frontend-app.onrender.com"] // Add your actual frontend URL
-        : "http://localhost:5173",
+        : process.env.FRONTEND_URL || "http://localhost:3000",
     credentials: true,
   })
 );

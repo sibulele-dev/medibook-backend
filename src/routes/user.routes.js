@@ -1,6 +1,7 @@
 const express = require("express");
 const userController = require("../controllers/user.controller");
-const requireDepartment = require("../middleware/department.middleware");
+const authMiddleware = require("../middleware/auth.middleware");
+const requireRole = require("../middleware/role.middleware");
 const { rateLimitMiddleware, resetRateLimit } = require("../middleware/rateLimit.middleware");
 const router = express.Router();
 
@@ -8,46 +9,33 @@ const router = express.Router();
 router.post("/login", rateLimitMiddleware, userController.login);
 router.get("/check-email", userController.checkEmailRegistration);
 router.get("/status", userController.getApiStatus);
+router.post("/verify-email", userController.verifyEmail);
+router.post("/resend-verification", userController.resendVerificationEmail);
+router.post("/set-initial-password", userController.setInitialPassword);
+router.post("/refresh", userController.refreshToken);
+router.get("/password/requirements", userController.getPasswordRequirements);
 
-// Profile routes (now public)
+// Authenticated routes
+router.use(authMiddleware);
+
+// Profile routes
 router.get("/profile/:id?", userController.getProfile);
 router.put("/profile/:id?", userController.updateProfile);
 router.get("/profile", userController.getProfile);
 
-// Admin only routes (now public)
-router.get("/all", userController.getAllUsers);
-router.get("/team-members", userController.getTeamMembers); // Temporarily removed department requirement for testing
-router.get("/debug-department", userController.debugUserDepartment); // Debug route
-router.delete("/:id", userController.deleteUser);
-router.put("/:id/toggle-status", userController.toggleUserStatus);
-
-// Admin email management routes (now public)
-router.get("/admin/allowed-emails", userController.getAllowedAdminEmails);
-
-// Doctor management routes (now public)
-router.post("/register/admin", userController.registerAdmin);
-router.post(
-  "/register/admin/member",
-  requireDepartment("super_admin"),
-  userController.registerAdminMember
-);
-router.post("/register/doctor", userController.registerDoctor);
-
-// Add email verification endpoints
-router.post("/verify-email", userController.verifyEmail);
-router.post("/resend-verification", userController.resendVerificationEmail);
-
-// Add set initial password endpoint (for team members and doctors)
-router.post("/set-initial-password", userController.setInitialPassword);
-
-// Add refresh token endpoint
-router.post("/refresh", userController.refreshToken);
-
-// Add logout endpoint
+// Password management
+router.post("/password/change", userController.changePassword);
 router.post("/logout", userController.logout);
 
-// Password management routes
-router.get("/password/requirements", userController.getPasswordRequirements);
-router.post("/password/change", userController.changePassword);
+// Admin only routes
+router.get("/all", requireRole('admin'), userController.getAllUsers);
+router.get("/team-members", requireRole('admin'), userController.getTeamMembers);
+router.get("/debug-department", requireRole('admin'), userController.debugUserDepartment);
+router.delete("/:id", requireRole('admin'), userController.deleteUser);
+router.put("/:id/toggle-status", requireRole('admin'), userController.toggleUserStatus);
+router.get("/admin/allowed-emails", requireRole('admin'), userController.getAllowedAdminEmails);
+router.post("/register/admin", requireRole('admin'), userController.registerAdmin);
+router.post("/register/admin/member", requireRole('admin'), userController.registerAdminMember);
+router.post("/register/doctor", requireRole('admin'), userController.registerDoctor);
 
 module.exports = router;

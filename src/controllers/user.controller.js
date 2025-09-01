@@ -1,45 +1,35 @@
 const userService = require("../services/user.service");
 const emailService = require("../services/email.service");
+const { UserValidation } = require("../validation/user.validation");
 const { eq } = require("drizzle-orm");
 const db = require("../db");
 const { users, admins, departments } = require("../schema");
 
 class UserController {
-  // Register a new user
+  // Register a new user - now with proper validation
   async register(req, res) {
     try {
-      const { email, firstName, lastName, password, phoneNumber } = req.body;
-
-      // Validate required fields
-      if (!email || !firstName || !lastName || !password || !phoneNumber) {
+      // Manual validation (alternatively, you can use middleware)
+      const validationResult = UserValidation.validateUserRegistration(req.body);
+      
+      if (UserValidation.hasValidationError(validationResult)) {
+        const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
         return res.status(400).json({
           success: false,
-          message:
-            "All fields are required: email, firstName, lastName, password, phoneNumber",
+          message: `Validation failed: ${errorMessage}`,
+          errors: validationResult.error.details.map(detail => ({
+            field: detail.path.join('.'),
+            message: detail.message
+          }))
         });
       }
 
-      // Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid email format",
-        });
-      }
-
-      const normalizedEmail = email.toLowerCase().trim();
-      const userData = {
-        email: normalizedEmail,
-        firstName,
-        lastName,
-        password,
-        phoneNumber,
-      };
+      // Get validated and sanitized data
+      const userData = UserValidation.getValidatedData(validationResult);
 
       // Determine role based on admin_email table
       const role = await userService.constructor.determineUserRoleByEmail(
-        normalizedEmail
+        userData.email
       );
       userData.role = role;
 
@@ -67,57 +57,36 @@ class UserController {
       });
     } catch (error) {
       console.error("Registration error:", error);
-      const isValidationError =
-        error.message && error.message.startsWith("Validation failed:");
-      return res.status(isValidationError ? 400 : 500).json({
+      return res.status(500).json({
         success: false,
         message: error.message || "Internal server error",
       });
     }
   }
 
-  // Register a new admin
+  // Register a new admin - with validation
   async registerAdmin(req, res) {
     try {
-      const {
-        email,
-        firstName,
-        lastName,
-        password,
-        phoneNumber,
-        department,
-        permissions,
-      } = req.body;
-      // Validate required fields
-      if (!email || !firstName || !lastName || !password) {
+      const validationResult = UserValidation.validateAdminRegistration(req.body);
+      
+      if (UserValidation.hasValidationError(validationResult)) {
+        const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
         return res.status(400).json({
           success: false,
-          message: "All fields are required",
+          message: `Validation failed: ${errorMessage}`,
+          errors: validationResult.error.details.map(detail => ({
+            field: detail.path.join('.'),
+            message: detail.message
+          }))
         });
       }
-      // Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid email format",
-        });
-      }
-      const normalizedEmail = email.toLowerCase().trim();
-      const userData = {
-        email: normalizedEmail,
-        firstName,
-        lastName,
-        password,
-        phoneNumber,
-        department,
-        permissions,
-      };
+
+      const userData = UserValidation.getValidatedData(validationResult);
       const newAdmin = await userService.registerAdmin(userData);
+
       res.status(201).json({
         success: true,
-        message:
-          "Admin registered successfully. Please check your email to verify your account.",
+        message: "Admin registered successfully. Please check your email to verify your account.",
         data: {
           user: newAdmin,
           role: newAdmin.role,
@@ -126,62 +95,35 @@ class UserController {
       });
     } catch (error) {
       console.error("Admin registration error:", error);
-      const isValidationError =
-        error.message && error.message.startsWith("Validation failed:");
-      return res.status(isValidationError ? 400 : 500).json({
+      return res.status(500).json({
         success: false,
-        message: isValidationError
-          ? error.message
-          : "Could not register user. Please try again later.",
+        message: error.message || "Could not register user. Please try again later.",
       });
     }
   }
 
-  // Register a new admin team member (for team management)
+  // Register a new admin team member - with validation
   async registerAdminMember(req, res) {
     try {
-      const {
-        email,
-        firstName,
-        lastName,
-        phoneNumber,
-        department,
-        permissions,
-        role = "admin", // Default to admin role
-      } = req.body;
-
-      // Validate required fields
-      if (!email || !firstName || !lastName) {
+      const validationResult = UserValidation.validateAdminMemberRegistration(req.body);
+      
+      if (UserValidation.hasValidationError(validationResult)) {
+        const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
         return res.status(400).json({
           success: false,
-          message: "All fields are required: email, firstName, lastName",
+          message: `Validation failed: ${errorMessage}`,
+          errors: validationResult.error.details.map(detail => ({
+            field: detail.path.join('.'),
+            message: detail.message
+          }))
         });
       }
 
-      // Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid email format",
-        });
-      }
+      const userData = UserValidation.getValidatedData(validationResult);
+      // Force admin role for team members
+      userData.role = "admin";
 
-      const normalizedEmail = email.toLowerCase().trim();
-      const userData = {
-        email: normalizedEmail,
-        firstName,
-        lastName,
-        phoneNumber,
-        department,
-        permissions,
-        role: "admin", // Force admin role for team members
-      };
-
-      // Register the admin member (without password)
-      const newAdminMember = await userService.registerAdminWithoutPassword(
-        userData
-      );
+      const newAdminMember = await userService.registerAdminWithoutPassword(userData);
 
       // Generate verification token
       const verificationToken = userService.generateAccountVerificationToken(
@@ -203,8 +145,7 @@ class UserController {
 
       res.status(201).json({
         success: true,
-        message:
-          "Team member registered successfully. A verification email has been sent to their email address.",
+        message: "Team member registered successfully. A verification email has been sent to their email address.",
         data: {
           user: newAdminMember,
           role: newAdminMember.role,
@@ -213,62 +154,32 @@ class UserController {
       });
     } catch (error) {
       console.error("Team member registration error:", error);
-      const isValidationError =
-        error.message && error.message.startsWith("Validation failed:");
-      return res.status(isValidationError ? 400 : 500).json({
+      return res.status(500).json({
         success: false,
-        message: isValidationError
-          ? error.message
-          : "Could not register team member. Please try again later.",
+        message: error.message || "Could not register team member. Please try again later.",
       });
     }
   }
 
-  // Register doctor (admin or public)
+  // Register doctor - with validation
   async registerDoctor(req, res) {
     try {
-      const {
-        email,
-        firstName,
-        lastName,
-        specialization,
-        phoneNumber,
-        practiceId,
-        licenseNumber,
-        experience,
-        bio,
-      } = req.body;
-      // Validate required fields
-      if (!email || !firstName || !lastName || !phoneNumber) {
+      const validationResult = UserValidation.validateDoctorRegistration(req.body);
+      
+      if (UserValidation.hasValidationError(validationResult)) {
+        const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
         return res.status(400).json({
           success: false,
-          message:
-            "All fields are required: email, firstName, lastName, phoneNumber",
+          message: `Validation failed: ${errorMessage}`,
+          errors: validationResult.error.details.map(detail => ({
+            field: detail.path.join('.'),
+            message: detail.message
+          }))
         });
       }
-      // Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid email format",
-        });
-      }
-      const normalizedEmail = email.toLowerCase().trim();
-      const userData = {
-        email: normalizedEmail,
-        firstName,
-        lastName,
-        specialization,
-        phoneNumber,
-        practiceId,
-        licenseNumber,
-        experience,
-        bio,
-      };
-      const newDoctor = await userService.registerDoctorWithoutPassword(
-        userData
-      );
+
+      const userData = UserValidation.getValidatedData(validationResult);
+      const newDoctor = await userService.registerDoctorWithoutPassword(userData);
 
       // Generate verification token
       const verificationToken = userService.generateAccountVerificationToken(
@@ -290,8 +201,7 @@ class UserController {
 
       res.status(201).json({
         success: true,
-        message:
-          "Doctor registered successfully. A verification email has been sent to their email address.",
+        message: "Doctor registered successfully. A verification email has been sent to their email address.",
         data: {
           user: newDoctor,
           role: newDoctor.role,
@@ -299,37 +209,36 @@ class UserController {
       });
     } catch (error) {
       console.error("Doctor registration error:", error);
-      const isValidationError =
-        error.message && error.message.startsWith("Validation failed:");
-      return res.status(isValidationError ? 400 : 500).json({
+      return res.status(500).json({
         success: false,
-        message: isValidationError
-          ? error.message
-          : "Could not register doctor. Please try again later.",
+        message: error.message || "Could not register doctor. Please try again later.",
       });
     }
   }
 
-  // Login endpoint
+  // Login endpoint - with validation
   async login(req, res) {
     try {
-      const { email, password } = req.body;
+      const validationResult = UserValidation.validateLogin(req.body);
+      
+      if (UserValidation.hasValidationError(validationResult)) {
+        const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
+        return res.status(400).json({
+          success: false,
+          message: `Validation failed: ${errorMessage}`,
+          errors: validationResult.error.details.map(detail => ({
+            field: detail.path.join('.'),
+            message: detail.message
+          }))
+        });
+      }
+
+      const { email, password } = UserValidation.getValidatedData(validationResult);
       const clientIP = req.ip || req.connection.remoteAddress;
 
       console.log(`Login attempt from IP: ${clientIP}, Email: ${email}`);
 
-      if (!email || !password) {
-        console.log(`Login failed - Missing credentials from IP: ${clientIP}`);
-        return res.status(400).json({
-          success: false,
-          message: "Email and password are required",
-        });
-      }
-
-      const { token, refreshToken, user } = await userService.loginUser(
-        email,
-        password
-      );
+      const { token, refreshToken, user } = await userService.loginUser(email, password);
 
       // Reset rate limit on successful login
       const { resetRateLimit } = require("../middleware/rateLimit.middleware");
@@ -357,44 +266,25 @@ class UserController {
     }
   }
 
-  // Get user profile
-  async getProfile(req, res) {
-    try {
-      const userId = req.params.id || req.user?.id;
-
-      if (!userId) {
-        return res.status(401).json({
-          success: false,
-          message: "Authentication required",
-        });
-      }
-
-      const user = await userService.getUserById(userId);
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: "User not found",
-        });
-      }
-
-      res.status(200).json({
-        success: true,
-        user,
-      });
-    } catch (error) {
-      console.error("Get profile error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Internal server error",
-      });
-    }
-  }
-
-  // Update user profile
+  // Update user profile - with validation
   async updateProfile(req, res) {
     try {
+      const validationResult = UserValidation.validateProfileUpdate(req.body);
+      
+      if (UserValidation.hasValidationError(validationResult)) {
+        const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
+        return res.status(400).json({
+          success: false,
+          message: `Validation failed: ${errorMessage}`,
+          errors: validationResult.error.details.map(detail => ({
+            field: detail.path.join('.'),
+            message: detail.message
+          }))
+        });
+      }
+
       const userId = req.params.id || req.user?.id;
-      const updateData = req.body;
+      const updateData = UserValidation.getValidatedData(validationResult);
 
       if (!userId) {
         return res.status(400).json({
@@ -403,10 +293,7 @@ class UserController {
         });
       }
 
-      const updatedUser = await userService.updateUserProfile(
-        userId,
-        updateData
-      );
+      const updatedUser = await userService.updateUserProfile(userId, updateData);
 
       res.status(200).json({
         success: true,
@@ -422,15 +309,29 @@ class UserController {
     }
   }
 
-  // Get all users with pagination and filtering
+  // Get all users with pagination and filtering - with validation
   async getAllUsers(req, res) {
     try {
-      const { page = 1, limit = 10, search, role, isActive } = req.query;
+      const validationResult = UserValidation.validateGetAllUsersQuery(req.query);
+      
+      if (UserValidation.hasValidationError(validationResult)) {
+        const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
+        return res.status(400).json({
+          success: false,
+          message: `Validation failed: ${errorMessage}`,
+          errors: validationResult.error.details.map(detail => ({
+            field: detail.path.join('.'),
+            message: detail.message
+          }))
+        });
+      }
+
+      const { page, limit, search, role, isActive } = UserValidation.getValidatedData(validationResult);
       const filters = {};
 
       if (search) filters.search = search;
       if (role) filters.role = role;
-      if (isActive !== undefined) filters.isActive = isActive === "true";
+      if (isActive !== undefined) filters.isActive = isActive;
 
       const result = await userService.getAllUsers(page, limit, filters);
 
@@ -447,314 +348,25 @@ class UserController {
     }
   }
 
-  // Get team members (super admin only)
-  async getTeamMembers(req, res) {
-    try {
-      const { page = 1, limit = 10, search, isActive } = req.query;
-      const filters = {
-        role: "admin", // Only get admin users
-      };
-
-      if (search) filters.search = search;
-      if (isActive !== undefined) filters.isActive = isActive === "true";
-
-      const result = await userService.getAllUsers(page, limit, filters);
-
-      res.json({
-        success: true,
-        data: result,
-      });
-    } catch (error) {
-      console.error("Get team members error:", error);
-      res.status(500).json({
-        success: false,
-        message: error.message || "Failed to fetch team members",
-      });
-    }
-  }
-
-  // Toggle user status (admin only)
-  async toggleUserStatus(req, res) {
-    try {
-      const { id } = req.params;
-
-      if (!id) {
-        return res.status(400).json({
-          success: false,
-          message: "User ID is required",
-        });
-      }
-
-      const result = await userService.toggleUserStatus(id);
-
-      if (!result.success) {
-        return res.status(404).json(result);
-      }
-
-      res.status(200).json({
-        success: true,
-        message: "User status updated successfully",
-        user: result.user,
-      });
-    } catch (error) {
-      console.error("Toggle user status error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Internal server error",
-      });
-    }
-  }
-
-  // Delete user (admin only)
-  async deleteUser(req, res) {
-    try {
-      const { id } = req.params;
-      const { reason } = req.body;
-
-      if (!id) {
-        return res.status(400).json({
-          success: false,
-          message: "User ID is required",
-        });
-      }
-
-      const result = await userService.deleteUser(id, reason, req.user?.id);
-
-      if (!result.success) {
-        return res.status(404).json(result);
-      }
-
-      res.status(200).json({
-        success: true,
-        message: "User deleted successfully",
-        deletedUser: result.deletedUser,
-      });
-    } catch (error) {
-      console.error("Delete user error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Internal server error",
-      });
-    }
-  }
-
-  // Get API status
-  async getApiStatus(req, res) {
-    try {
-      const status = {
-        status: "operational",
-        timestamp: new Date().toISOString(),
-        version: "1.0.0",
-        environment: process.env.NODE_ENV || "development",
-        features: {
-          authentication: "supabase",
-          database: "postgresql",
-          email: "nodemailer",
-        },
-        uptime: process.uptime(),
-        memory: process.memoryUsage(),
-      };
-
-      res.status(200).json({
-        success: true,
-        data: status,
-      });
-    } catch (error) {
-      console.error("API status error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Internal server error",
-      });
-    }
-  }
-
-  // Check email registration status
-  async checkEmailRegistration(req, res) {
-    try {
-      const { email } = req.query;
-
-      if (!email) {
-        return res.status(400).json({
-          success: false,
-          message: "Email parameter is required",
-        });
-      }
-
-      const normalizedEmail = email.toLowerCase().trim();
-      const isAllowed = userService.isEmailAllowedToRegister(normalizedEmail);
-
-      res.status(200).json({
-        success: true,
-        data: {
-          email: normalizedEmail,
-          isAllowed,
-          message: isAllowed
-            ? "Email is authorized for registration"
-            : "Email is not authorized for registration",
-        },
-      });
-    } catch (error) {
-      console.error("Check email registration error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Internal server error",
-      });
-    }
-  }
-
-  // Get allowed admin emails (admin only)
-  async getAllowedAdminEmails(req, res) {
-    try {
-      const result = userService.getAllowedAdminEmails();
-
-      res.status(200).json({
-        success: true,
-        data: result,
-      });
-    } catch (error) {
-      console.error("Get allowed admin emails error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Internal server error",
-      });
-    }
-  }
-
-  // Verify email endpoint
-  async verifyEmail(req, res) {
-    try {
-      const { token } = req.body;
-      if (!token) {
-        return res
-          .status(400)
-          .json({ success: false, message: "Verification token is required" });
-      }
-      // Decode and verify the token (assume JWT for simplicity)
-      const jwt = require("jsonwebtoken");
-      const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
-      let payload;
-      try {
-        payload = jwt.verify(token, JWT_SECRET);
-      } catch (err) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid or expired verification token",
-        });
-      }
-      // Find user by email in payload
-      const user = await userService.getUserByEmail(payload.email, true);
-      if (!user) {
-        return res
-          .status(404)
-          .json({ success: false, message: "User not found" });
-      }
-      // Mark email as verified
-      await userService.updateUserProfile(user.id, { emailVerified: true });
-      // Send welcome email after verification
-      try {
-        await emailService.sendWelcomeEmail(
-          user.email,
-          `${user.firstName} ${user.lastName}`
-        );
-      } catch (emailError) {
-        console.error("Failed to send welcome email:", emailError);
-      }
-      return res
-        .status(200)
-        .json({ success: true, message: "Email verified successfully" });
-    } catch (error) {
-      console.error("Email verification error:", error);
-      return res.status(500).json({
-        success: false,
-        message: error.message || "Internal server error",
-      });
-    }
-  }
-
-  // Set initial password endpoint (for team members and doctors)
-  async setInitialPassword(req, res) {
-    try {
-      const { token, password } = req.body;
-
-      if (!token || !password) {
-        return res.status(400).json({
-          success: false,
-          message: "Token and password are required",
-        });
-      }
-
-      const result = await userService.setInitialPassword(token, password);
-
-      return res.status(200).json({
-        success: true,
-        message: result.message,
-        data: { user: result.user },
-      });
-    } catch (error) {
-      console.error("Set initial password error:", error);
-      return res.status(400).json({
-        success: false,
-        message: error.message || "Failed to set initial password",
-      });
-    }
-  }
-
-  // Resend verification email endpoint
-  async resendVerificationEmail(req, res) {
-    try {
-      const { email } = req.body;
-      if (!email) {
-        return res
-          .status(400)
-          .json({ success: false, message: "Email is required" });
-      }
-      const user = await userService.getUserByEmail(email, true);
-      if (!user) {
-        return res
-          .status(404)
-          .json({ success: false, message: "User not found" });
-      }
-      if (user.emailVerified) {
-        return res
-          .status(400)
-          .json({ success: false, message: "Email is already verified" });
-      }
-      // Generate a new verification token (JWT with email)
-      const jwt = require("jsonwebtoken");
-      const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
-      const verificationToken = jwt.sign({ email: user.email }, JWT_SECRET, {
-        expiresIn: "24h",
-      });
-      // Send verification email
-      await emailService.sendEmailVerification(
-        user.email,
-        `${user.firstName} ${user.lastName}`,
-        verificationToken
-      );
-      return res
-        .status(200)
-        .json({ success: true, message: "Verification email sent" });
-    } catch (error) {
-      console.error("Resend verification email error:", error);
-      return res.status(500).json({
-        success: false,
-        message: error.message || "Internal server error",
-      });
-    }
-  }
-
-  // Change password (requires authentication)
+  // Change password - with validation
   async changePassword(req, res) {
     try {
-      const { currentPassword, newPassword } = req.body;
-      const userId = req.user.id; // From auth middleware
-
-      if (!currentPassword || !newPassword) {
+      const validationResult = UserValidation.validatePasswordChange(req.body);
+      
+      if (UserValidation.hasValidationError(validationResult)) {
+        const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
         return res.status(400).json({
           success: false,
-          message: "Current password and new password are required",
+          message: `Validation failed: ${errorMessage}`,
+          errors: validationResult.error.details.map(detail => ({
+            field: detail.path.join('.'),
+            message: detail.message
+          }))
         });
       }
+
+      const { currentPassword, newPassword } = UserValidation.getValidatedData(validationResult);
+      const userId = req.user.id; // From auth middleware
 
       // Get user with password hash
       const user = await userService.getUserByEmail(req.user.email, true);
@@ -794,39 +406,270 @@ class UserController {
     }
   }
 
-  // Get password requirements
-  async getPasswordRequirements(req, res) {
+  // Set initial password endpoint - with validation
+  async setInitialPassword(req, res) {
     try {
-      const requirements = userService.getPasswordRequirements();
-      res.json({
+      const validationResult = UserValidation.validateInitialPassword(req.body);
+      
+      if (UserValidation.hasValidationError(validationResult)) {
+        const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
+        return res.status(400).json({
+          success: false,
+          message: `Validation failed: ${errorMessage}`,
+          errors: validationResult.error.details.map(detail => ({
+            field: detail.path.join('.'),
+            message: detail.message
+          }))
+        });
+      }
+
+      const { token, password } = UserValidation.getValidatedData(validationResult);
+      const result = await userService.setInitialPassword(token, password);
+
+      return res.status(200).json({
         success: true,
-        data: requirements,
+        message: result.message,
+        data: { user: result.user },
       });
     } catch (error) {
-      console.error("Get password requirements error:", error);
-      res.status(500).json({
+      console.error("Set initial password error:", error);
+      return res.status(400).json({
         success: false,
-        message: "Failed to get password requirements",
+        message: error.message || "Failed to set initial password",
       });
     }
   }
 
-  // Refresh access token
-  async refreshToken(req, res) {
+  // Verify email endpoint - with validation
+  async verifyEmail(req, res) {
     try {
-      const { refreshToken } = req.body;
-
-      if (!refreshToken) {
+      const validationResult = UserValidation.validateEmailVerification(req.body);
+      
+      if (UserValidation.hasValidationError(validationResult)) {
+        const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
         return res.status(400).json({
           success: false,
-          message: "Refresh token is required",
+          message: `Validation failed: ${errorMessage}`,
+          errors: validationResult.error.details.map(detail => ({
+            field: detail.path.join('.'),
+            message: detail.message
+          }))
         });
       }
 
+      const { token } = UserValidation.getValidatedData(validationResult);
+
+      // Decode and verify the token
+      const jwt = require("jsonwebtoken");
+      const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
+      let payload;
+      try {
+        payload = jwt.verify(token, JWT_SECRET);
+      } catch (err) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid or expired verification token",
+        });
+      }
+
+      // Find user by email in payload
+      const user = await userService.getUserByEmail(payload.email, true);
+      if (!user) {
+        return res
+          .status(404)
+          .json({ success: false, message: "User not found" });
+      }
+
+      // Mark email as verified
+      await userService.updateUserProfile(user.id, { emailVerified: true });
+
+      // Send welcome email after verification
+      try {
+        await emailService.sendWelcomeEmail(
+          user.email,
+          `${user.firstName} ${user.lastName}`
+        );
+      } catch (emailError) {
+        console.error("Failed to send welcome email:", emailError);
+      }
+
+      return res
+        .status(200)
+        .json({ success: true, message: "Email verified successfully" });
+    } catch (error) {
+      console.error("Email verification error:", error);
+      return res.status(500).json({
+        success: false,
+        message: error.message || "Internal server error",
+      });
+    }
+  }
+
+  // Check email registration status - with validation
+  async checkEmailRegistration(req, res) {
+    try {
+      const validationResult = UserValidation.validateCheckEmailRegistration(req.query);
+      
+      if (UserValidation.hasValidationError(validationResult)) {
+        const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
+        return res.status(400).json({
+          success: false,
+          message: `Validation failed: ${errorMessage}`,
+          errors: validationResult.error.details.map(detail => ({
+            field: detail.path.join('.'),
+            message: detail.message
+          }))
+        });
+      }
+
+      const { email } = UserValidation.getValidatedData(validationResult);
+      const isAllowed = userService.isEmailAllowedToRegister(email);
+
+      res.status(200).json({
+        success: true,
+        data: {
+          email,
+          isAllowed,
+          message: isAllowed
+            ? "Email is authorized for registration"
+            : "Email is not authorized for registration",
+        },
+      });
+    } catch (error) {
+      console.error("Check email registration error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
+    }
+  }
+
+  // ... (rest of your controller methods remain the same)
+  
+  // Get user profile
+  async getProfile(req, res) {
+    try {
+      const userId = req.params.id || req.user?.id;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Authentication required",
+        });
+      }
+
+      const user = await userService.getUserById(userId);
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        user,
+      });
+    } catch (error) {
+      console.error("Get profile error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
+    }
+  }
+
+  // Toggle user status (admin only)
+  async toggleUserStatus(req, res) {
+    try {
+      const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          message: "User ID is required",
+        });
+      }
+
+      const result = await userService.toggleUserStatus(id);
+
+      res.status(200).json({
+        success: true,
+        message: "User status updated successfully",
+        user: result,
+      });
+    } catch (error) {
+      console.error("Toggle user status error:", error);
+      res.status(500).json({
+        success: false,
+        message: error.message || "Internal server error",
+      });
+    }
+  }
+
+  // Delete user (admin only) - with validation
+  async deleteUser(req, res) {
+    try {
+      const paramValidation = UserValidation.validateUserIdParam(req.params);
+      const bodyValidation = UserValidation.validateDeleteUser(req.body);
+      
+      if (UserValidation.hasValidationError(paramValidation)) {
+        const errorMessage = UserValidation.formatValidationErrors(paramValidation.error);
+        return res.status(400).json({
+          success: false,
+          message: `Parameter validation failed: ${errorMessage}`,
+        });
+      }
+
+      if (UserValidation.hasValidationError(bodyValidation)) {
+        const errorMessage = UserValidation.formatValidationErrors(bodyValidation.error);
+        return res.status(400).json({
+          success: false,
+          message: `Body validation failed: ${errorMessage}`,
+        });
+      }
+
+      const { id } = UserValidation.getValidatedData(paramValidation);
+      const { reason } = UserValidation.getValidatedData(bodyValidation);
+
+      const result = await userService.deleteUser(id, reason, req.user?.id);
+
+      res.status(200).json({
+        success: true,
+        message: "User deleted successfully",
+      });
+    } catch (error) {
+      console.error("Delete user error:", error);
+      res.status(500).json({
+        success: false,
+        message: error.message || "Internal server error",
+      });
+    }
+  }
+
+  // Refresh access token - with validation
+  async refreshToken(req, res) {
+    try {
+      const validationResult = UserValidation.validateRefreshToken(req.body);
+      
+      if (UserValidation.hasValidationError(validationResult)) {
+        const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
+        return res.status(400).json({
+          success: false,
+          message: `Validation failed: ${errorMessage}`,
+          errors: validationResult.error.details.map(detail => ({
+            field: detail.path.join('.'),
+            message: detail.message
+          }))
+        });
+      }
+
+      const { refreshToken } = UserValidation.getValidatedData(validationResult);
+
       // Verify refresh token using the correct secret
       const jwt = require("jsonwebtoken");
-      const JWT_REFRESH_SECRET =
-        process.env.JWT_REFRESH_SECRET || "your-refresh-secret-key";
+      const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "your-refresh-secret-key";
+      const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
       let payload;
       try {
@@ -892,12 +735,121 @@ class UserController {
     }
   }
 
-  // Logout endpoint
+  // Resend verification email - with validation
+  async resendVerificationEmail(req, res) {
+    try {
+      const validationResult = UserValidation.validateResendVerification(req.body);
+      
+      if (UserValidation.hasValidationError(validationResult)) {
+        const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
+        return res.status(400).json({
+          success: false,
+          message: `Validation failed: ${errorMessage}`,
+          errors: validationResult.error.details.map(detail => ({
+            field: detail.path.join('.'),
+            message: detail.message
+          }))
+        });
+      }
+
+      const { email } = UserValidation.getValidatedData(validationResult);
+      
+      const user = await userService.getUserByEmail(email, true);
+      if (!user) {
+        return res
+          .status(404)
+          .json({ success: false, message: "User not found" });
+      }
+
+      if (user.emailVerified) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Email is already verified" });
+      }
+
+      // Generate a new verification token
+      const jwt = require("jsonwebtoken");
+      const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
+      const verificationToken = jwt.sign({ email: user.email }, JWT_SECRET, {
+        expiresIn: "24h",
+      });
+
+      // Send verification email
+      await emailService.sendEmailVerification(
+        user.email,
+        `${user.firstName} ${user.lastName}`,
+        verificationToken
+      );
+
+      return res
+        .status(200)
+        .json({ success: true, message: "Verification email sent" });
+    } catch (error) {
+      console.error("Resend verification email error:", error);
+      return res.status(500).json({
+        success: false,
+        message: error.message || "Internal server error",
+      });
+    }
+  }
+
+  // Get team members (super admin only) - with validation
+  async getTeamMembers(req, res) {
+    try {
+      const validationResult = UserValidation.validateGetAllUsersQuery(req.query);
+      
+      if (UserValidation.hasValidationError(validationResult)) {
+        const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
+        return res.status(400).json({
+          success: false,
+          message: `Validation failed: ${errorMessage}`,
+          errors: validationResult.error.details.map(detail => ({
+            field: detail.path.join('.'),
+            message: detail.message
+          }))
+        });
+      }
+
+      const { page, limit, search, isActive } = UserValidation.getValidatedData(validationResult);
+      const filters = {
+        role: "admin", // Only get admin users
+      };
+
+      if (search) filters.search = search;
+      if (isActive !== undefined) filters.isActive = isActive;
+
+      const result = await userService.getAllUsers(page, limit, filters);
+
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      console.error("Get team members error:", error);
+      res.status(500).json({
+        success: false,
+        message: error.message || "Failed to fetch team members",
+      });
+    }
+  }
+
+  // Logout endpoint - with validation
   async logout(req, res) {
     try {
-      const { refreshToken } = req.body;
+      // Validate refresh token if provided
+      if (req.body.refreshToken) {
+        const validationResult = UserValidation.validateRefreshToken(req.body);
+        
+        if (UserValidation.hasValidationError(validationResult)) {
+          const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
+          return res.status(400).json({
+            success: false,
+            message: `Validation failed: ${errorMessage}`,
+          });
+        }
 
-      if (refreshToken) {
+        const { refreshToken } = UserValidation.getValidatedData(validationResult);
+
         // Remove refresh token from Redis
         const redisClient = require("../utils/redis");
         await redisClient.del(refreshToken);
@@ -909,6 +861,71 @@ class UserController {
       });
     } catch (error) {
       console.error("Logout error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
+    }
+  }
+
+  // Get password requirements
+  async getPasswordRequirements(req, res) {
+    try {
+      const requirements = userService.getPasswordRequirements();
+      res.json({
+        success: true,
+        data: requirements,
+      });
+    } catch (error) {
+      console.error("Get password requirements error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to get password requirements",
+      });
+    }
+  }
+
+  // Get API status
+  async getApiStatus(req, res) {
+    try {
+      const status = {
+        status: "operational",
+        timestamp: new Date().toISOString(),
+        version: "1.0.0",
+        environment: process.env.NODE_ENV || "development",
+        features: {
+          authentication: "supabase",
+          database: "postgresql",
+          email: "nodemailer",
+        },
+        uptime: process.uptime(),
+        memory: process.memoryUsage(),
+      };
+
+      res.status(200).json({
+        success: true,
+        data: status,
+      });
+    } catch (error) {
+      console.error("API status error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      });
+    }
+  }
+
+  // Get allowed admin emails (admin only)
+  async getAllowedAdminEmails(req, res) {
+    try {
+      const result = userService.getAllowedAdminEmails();
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      console.error("Get allowed admin emails error:", error);
       res.status(500).json({
         success: false,
         message: "Internal server error",

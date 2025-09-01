@@ -1,13 +1,7 @@
 const { eq, and, or, like, desc, asc, count, sql } = require("drizzle-orm");
 const db = require("../db");
-const {
-  users,
-  doctors,
-  admins,
-  departments,
-  passwordHistory,
-} = require("../schema");
-const config = require("../config/config");
+const { users, doctors, admins, departments, passwordHistory } = require("../schema");
+const { UserValidation } = require("../validation/user.validation");
 const { nanoid } = require("nanoid");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
@@ -17,13 +11,22 @@ const {
   getPasswordRequirements,
   validatePassword,
 } = require("../utils/passwordValidation");
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
 // Helper function to create a new user object
 const createUser = (userData) => {
   return {
     ...userData,
     id: nanoid(25),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+};
+
+// Helper function to create admin data
+const createAdminData = (adminData) => {
+  return {
+    ...adminData,
+    id: adminData.userId, // Admin ID should match user ID
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -49,28 +52,23 @@ async function verifyPassword(password, hash) {
 function generateJWT(user) {
   return jwt.sign(
     { id: user.id, role: user.role, email: user.email },
-    JWT_SECRET,
+    process.env.JWT_SECRET,
     { expiresIn: "1h" }
   );
 }
 
 function generateVerificationToken(email) {
-  return jwt.sign({ email: email }, JWT_SECRET, { expiresIn: "24h" });
+  return jwt.sign({ email: email }, process.env.JWT_SECRET, { expiresIn: "24h" });
 }
 
 class UserService {
   constructor() {
-    // Configuration constants
     this.DEFAULT_PAGE_SIZE = 10;
     this.MAX_PAGE_SIZE = 100;
-
-    // Define allowed admin emails with fallback and better error handling
     this.ALLOWED_ADMIN_EMAILS = this.initializeAdminEmails();
   }
 
-  // Initialize allowed admin emails from environment or config
   initializeAdminEmails() {
-    // Only use environment variable, no fallbacks
     const envEmails = process.env.ALLOWED_ADMIN_EMAILS;
     if (envEmails) {
       return envEmails.split(",").map((email) => email.trim().toLowerCase());
@@ -80,295 +78,105 @@ class UserService {
     );
   }
 
-  // Check if email is allowed to register (admin emails only)
-  isEmailAllowedToRegister(email) {
-    if (!email || typeof email !== "string") {
-      return false;
-    }
-
-    const normalizedEmail = email.toLowerCase().trim();
-    return this.ALLOWED_ADMIN_EMAILS.includes(normalizedEmail);
-  }
-
-  // Check if email should be assigned super_admin department (all allowed admin emails are super admins)
-  isSuperAdminEmail(email) {
-    if (!email || typeof email !== "string") {
-      return false;
-    }
-
-    const normalizedEmail = email.toLowerCase().trim();
-    return this.ALLOWED_ADMIN_EMAILS.includes(normalizedEmail);
-  }
-
-  // Get department ID by name
-  async getDepartmentIdByName(departmentName) {
-    try {
-      const result = await db
-        .select({ id: departments.id })
-        .from(departments)
-        .where(eq(departments.name, departmentName))
-        .limit(1);
-
-      return result[0]?.id || null;
-    } catch (error) {
-      console.error("Error getting department ID:", error);
-      return null;
-    }
-  }
-
-  // Seed departments if they don't exist
-  async seedDepartments() {
-    try {
-      const departmentNames = [
-        "super_admin",
-        "onboarding",
-        "sales",
-        "support",
-        "billing_accounts",
-        "compliance",
-      ];
-      const departmentPrivileges = {
-        super_admin: ["full_access"],
-        onboarding: ["add_practices", "add_doctors", "verify_doctor_details"],
-        sales: ["communicate_potential_users", "view_adoption_funnel"],
-        support: ["help_technical_issues", "reset_doctor_access"],
-        billing_accounts: [
-          "manage_subscriptions",
-          "view_update_billing",
-          "send_invoices",
-        ],
-        compliance: [
-          "verify_credentials",
-          "approve_hpcsa_bhf",
-          "manage_document_verification",
-        ],
-      };
-
-      for (const deptName of departmentNames) {
-        const existingDept = await this.getDepartmentIdByName(deptName);
-        if (!existingDept) {
-          await db.insert(departments).values({
-            id: nanoid(25),
-            name: deptName,
-            privileges: departmentPrivileges[deptName] || [
-              "help_technical_issues",
-            ],
-          });
-          console.log(`Created department: ${deptName}`);
-        }
-      }
-    } catch (error) {
-      console.error("Error seeding departments:", error);
-    }
-  }
-
-  // Validate user input
+  // Updated validation methods using Joi
   validateUserInput(userData) {
-    const errors = [];
-
-    if (!userData.email || typeof userData.email !== "string") {
-      errors.push("Valid email is required");
-    } else {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(userData.email)) {
-        errors.push("Invalid email format");
-      }
+    const validationResult = UserValidation.validateUserRegistration(userData);
+    
+    if (UserValidation.hasValidationError(validationResult)) {
+      const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
+      return { isValid: false, errors: [errorMessage] };
     }
-
-    if (!userData.firstName || typeof userData.firstName !== "string") {
-      errors.push("First name is required");
-    }
-
-    if (!userData.lastName || typeof userData.lastName !== "string") {
-      errors.push("Last name is required");
-    }
-
-    if (!userData.password || typeof userData.password !== "string") {
-      errors.push("Password is required");
-    }
-
-    return errors;
+    
+    return { isValid: true, data: UserValidation.getValidatedData(validationResult) };
   }
 
-  // Validate user input without password (for team members)
   validateUserInputWithoutPassword(userData) {
-    const errors = [];
-
-    if (!userData.email || typeof userData.email !== "string") {
-      errors.push("Valid email is required");
-    } else {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(userData.email)) {
-        errors.push("Invalid email format");
-      }
+    const validationResult = UserValidation.validateAdminMemberRegistration(userData);
+    
+    if (UserValidation.hasValidationError(validationResult)) {
+      const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
+      return { isValid: false, errors: [errorMessage] };
     }
-
-    if (!userData.firstName || typeof userData.firstName !== "string") {
-      errors.push("First name is required");
-    }
-
-    if (!userData.lastName || typeof userData.lastName !== "string") {
-      errors.push("Last name is required");
-    }
-
-    return errors;
+    
+    return { isValid: true, data: UserValidation.getValidatedData(validationResult) };
   }
 
-  // Get password requirements
-  getPasswordRequirements() {
-    return getPasswordRequirements();
-  }
-
-  // Get user's password history
-  async getPasswordHistory(userId) {
-    try {
-      const history = await db
-        .select()
-        .from(passwordHistory)
-        .where(eq(passwordHistory.userId, userId))
-        .orderBy(desc(passwordHistory.createdAt));
-
-      return history;
-    } catch (error) {
-      console.error("Error getting password history:", error);
-      return [];
+  validateDoctorInput(userData) {
+    const validationResult = UserValidation.validateDoctorRegistration(userData);
+    
+    if (UserValidation.hasValidationError(validationResult)) {
+      const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
+      return { isValid: false, errors: [errorMessage] };
     }
+    
+    return { isValid: true, data: UserValidation.getValidatedData(validationResult) };
   }
 
-  // Store password in history
-  async storePasswordInHistory(userId, passwordHash) {
-    try {
-      await db.insert(passwordHistory).values({
-        userId: userId,
-        passwordHash: passwordHash,
-        createdAt: new Date().toISOString(),
-      });
-    } catch (error) {
-      console.error("Error storing password in history:", error);
+  validateLoginInput(loginData) {
+    const validationResult = UserValidation.validateLogin(loginData);
+    
+    if (UserValidation.hasValidationError(validationResult)) {
+      const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
+      return { isValid: false, errors: [errorMessage] };
     }
+    
+    return { isValid: true, data: UserValidation.getValidatedData(validationResult) };
   }
 
-  // Update user password with history tracking
-  async updateUserPassword(userId, newPassword) {
-    try {
-      // Get password history
-      const historicalPasswords = await this.getPasswordHistory(userId);
-
-      // Validate new password
-      const validation = await validatePasswordComprehensive(
-        newPassword,
-        historicalPasswords
-      );
-      if (!validation.isValid) {
-        throw new Error(validation.error);
-      }
-
-      // Hash new password
-      const passwordHash = await hashPassword(newPassword);
-
-      // Update user password
-      const [updatedUser] = await db
-        .update(users)
-        .set({
-          passwordHash: passwordHash,
-          updatedAt: new Date().toISOString(),
-        })
-        .where(eq(users.id, userId))
-        .returning();
-
-      if (!updatedUser) {
-        throw new Error("User not found");
-      }
-
-      // Store new password in history
-      await this.storePasswordInHistory(userId, passwordHash);
-
-      return { success: true, message: "Password updated successfully" };
-    } catch (error) {
-      console.error("Error updating user password:", error);
-      throw error;
+  validateProfileUpdateInput(updateData) {
+    const validationResult = UserValidation.validateProfileUpdate(updateData);
+    
+    if (UserValidation.hasValidationError(validationResult)) {
+      const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
+      return { isValid: false, errors: [errorMessage] };
     }
+    
+    return { isValid: true, data: UserValidation.getValidatedData(validationResult) };
   }
 
-  // Set initial password for team members and doctors
-  async setInitialPassword(verificationToken, newPassword) {
-    try {
-      // Decode and verify the token
-      const decoded = jwt.verify(verificationToken, process.env.JWT_SECRET);
-      const userId = decoded.userId;
-
-      // Check if user exists and is not verified
-      const user = await this.getUserById(userId);
-      if (!user) {
-        throw new Error("User not found");
-      }
-
-      if (user.emailVerified) {
-        throw new Error("Account is already verified");
-      }
-
-      // Validate password
-      const passwordValidation = validatePassword(newPassword);
-      if (!passwordValidation.isValid) {
-        throw new Error(
-          `Password validation failed: ${passwordValidation.errors.join(", ")}`
-        );
-      }
-
-      // Hash password
-      const passwordHash = await hashPassword(newPassword);
-
-      // Update user to verified and set password
-      const [updatedUser] = await db
-        .update(users)
-        .set({
-          passwordHash: passwordHash,
-          emailVerified: true,
-          updatedAt: new Date().toISOString(),
-        })
-        .where(eq(users.id, userId))
-        .returning();
-
-      if (!updatedUser) {
-        throw new Error("Failed to update user");
-      }
-
-      // Store password in history
-      await this.storePasswordInHistory(userId, passwordHash);
-
-      return {
-        success: true,
-        message: "Password set successfully and account verified",
-        user: updatedUser,
-      };
-    } catch (error) {
-      console.error("Error setting initial password:", error);
-      throw error;
+  validateUserIdInput(userId) {
+    const validationResult = UserValidation.validateUserId({ userId });
+    
+    if (UserValidation.hasValidationError(validationResult)) {
+      const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
+      return { isValid: false, errors: [errorMessage] };
     }
+    
+    return { isValid: true, data: UserValidation.getValidatedData(validationResult) };
   }
 
-  // Generate verification token for account verification
-  generateAccountVerificationToken(userId) {
-    return jwt.sign(
-      {
-        userId,
-        type: "account_verification",
-        exp: Math.floor(Date.now() / 1000) + 24 * 60 * 60, // 24 hours
-      },
-      process.env.JWT_SECRET
-    );
+  validateEmailInput(email) {
+    const validationResult = UserValidation.validateEmail({ email });
+    
+    if (UserValidation.hasValidationError(validationResult)) {
+      const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
+      return { isValid: false, errors: [errorMessage] };
+    }
+    
+    return { isValid: true, data: UserValidation.getValidatedData(validationResult) };
   }
 
-  // Register a new admin
+  validatePaginationInput(page, limit, filters = {}) {
+    const validationResult = UserValidation.validatePagination({ page, limit, filters });
+    
+    if (UserValidation.hasValidationError(validationResult)) {
+      const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
+      return { isValid: false, errors: [errorMessage] };
+    }
+    
+    return { isValid: true, data: UserValidation.getValidatedData(validationResult) };
+  }
+
+  // Updated register methods with improved validation
   async registerAdmin(userData) {
-    // Validate input
-    const validationErrors = this.validateUserInput(userData);
-    if (validationErrors.length > 0) {
-      throw new Error(`Validation failed: ${validationErrors.join(", ")}`);
+    // Use Joi validation instead of manual validation
+    const validation = this.validateUserInput(userData);
+    if (!validation.isValid) {
+      throw new Error(validation.errors.join(", "));
     }
 
-    // Normalize email
-    const normalizedEmail = userData.email.toLowerCase().trim();
+    const validatedData = validation.data;
+    const normalizedEmail = validatedData.email;
 
     // Check if user already exists
     const existingUser = await db
@@ -394,19 +202,11 @@ class UserService {
       throw new Error("Super admin department not found in database");
     }
 
-    // Validate password
-    const passwordValidation = validatePassword(userData.password);
-    if (!passwordValidation.isValid) {
-      throw new Error(
-        `Password validation failed: ${passwordValidation.errors.join(", ")}`
-      );
-    }
-
     // Hash password
-    const passwordHash = await hashPassword(userData.password);
+    const passwordHash = await hashPassword(validatedData.password);
 
     const newUser = createUser({
-      ...userData,
+      ...validatedData,
       email: normalizedEmail,
       passwordHash,
       role: "admin",
@@ -427,7 +227,7 @@ class UserService {
         const adminData = createAdminData({
           userId: insertedUser.id,
           departmentId: departmentId,
-          permissions: userData.permissions || [],
+          permissions: validatedData.permissions || [],
         });
 
         const [insertedAdmin] = await tx
@@ -444,16 +244,15 @@ class UserService {
     return transaction.user;
   }
 
-  // Register admin without password (for team members)
   async registerAdminWithoutPassword(userData) {
-    // Validate input (without password)
-    const validationErrors = this.validateUserInputWithoutPassword(userData);
-    if (validationErrors.length > 0) {
-      throw new Error(`Validation failed: ${validationErrors.join(", ")}`);
+    // Use Joi validation for admin member registration
+    const validation = this.validateUserInputWithoutPassword(userData);
+    if (!validation.isValid) {
+      throw new Error(validation.errors.join(", "));
     }
 
-    // Normalize email
-    const normalizedEmail = userData.email.toLowerCase().trim();
+    const validatedData = validation.data;
+    const normalizedEmail = validatedData.email;
 
     // Check if user already exists
     const existingUser = await db
@@ -480,7 +279,7 @@ class UserService {
     }
 
     const newUser = createUser({
-      ...userData,
+      ...validatedData,
       email: normalizedEmail,
       passwordHash: null, // No password initially
       role: "admin",
@@ -501,7 +300,7 @@ class UserService {
         const adminData = createAdminData({
           userId: insertedUser.id,
           departmentId: departmentId,
-          permissions: userData.permissions || [],
+          permissions: validatedData.permissions || [],
         });
 
         const [insertedAdmin] = await tx
@@ -518,15 +317,16 @@ class UserService {
     return transaction.user;
   }
 
-  // Register a new doctor
   async registerDoctor(userData) {
-    // Validate input
-    const validationErrors = this.validateUserInput(userData);
-    if (validationErrors.length > 0) {
-      throw new Error(`Validation failed: ${validationErrors.join(", ")}`);
+    // Use Joi validation for doctor registration
+    const validation = this.validateDoctorInput(userData);
+    if (!validation.isValid) {
+      throw new Error(validation.errors.join(", "));
     }
-    // Normalize email
-    const normalizedEmail = userData.email.toLowerCase().trim();
+
+    const validatedData = validation.data;
+    const normalizedEmail = validatedData.email;
+
     // Check if user already exists
     const existingUser = await db
       .select()
@@ -536,18 +336,14 @@ class UserService {
       throw new Error("User with this email already exists");
     }
 
-    // Validate password
-    const passwordValidation = validatePassword(userData.password);
-    if (!passwordValidation.isValid) {
-      throw new Error(
-        `Password validation failed: ${passwordValidation.errors.join(", ")}`
-      );
+    // Hash password if provided
+    let passwordHash = null;
+    if (validatedData.password) {
+      passwordHash = await hashPassword(validatedData.password);
     }
 
-    // Hash password
-    const passwordHash = await hashPassword(userData.password);
     const newUser = createUser({
-      ...userData,
+      ...validatedData,
       email: normalizedEmail,
       passwordHash,
       role: "doctor",
@@ -555,20 +351,23 @@ class UserService {
       emailVerified: false,
       lastLoggedInAt: new Date().toISOString(),
     });
+
     const transaction = await db.transaction(async (tx) => {
       try {
         const [insertedUser] = await tx
           .insert(users)
           .values(newUser)
           .returning();
+
         const doctorData = createDoctorData({
           id: insertedUser.id,
-          practiceId: userData.practiceId || null, // Allow null practice ID,
-          specialty: userData.specialization || "General Practice",
-          bio: userData.bio || null,
-          experience: userData.experience || null,
+          practiceId: validatedData.practiceId || null,
+          specialty: validatedData.specialization || "General Practice",
+          bio: validatedData.bio || null,
+          experience: validatedData.experience || null,
           isActive: true,
         });
+
         await tx.insert(doctors).values(doctorData);
         const { passwordHash, ...userWithoutSensitive } = insertedUser;
         return userWithoutSensitive;
@@ -577,19 +376,19 @@ class UserService {
         throw error;
       }
     });
+
     return transaction;
   }
 
-  // Register doctor without password (for admin-created doctors)
   async registerDoctorWithoutPassword(userData) {
-    // Validate input (without password)
-    const validationErrors = this.validateUserInputWithoutPassword(userData);
-    if (validationErrors.length > 0) {
-      throw new Error(`Validation failed: ${validationErrors.join(", ")}`);
+    // Use Joi validation for doctor registration (password optional)
+    const validation = this.validateDoctorInput(userData);
+    if (!validation.isValid) {
+      throw new Error(validation.errors.join(", "));
     }
 
-    // Normalize email
-    const normalizedEmail = userData.email.toLowerCase().trim();
+    const validatedData = validation.data;
+    const normalizedEmail = validatedData.email;
 
     // Check if user already exists
     const existingUser = await db
@@ -601,7 +400,7 @@ class UserService {
     }
 
     const newUser = createUser({
-      ...userData,
+      ...validatedData,
       email: normalizedEmail,
       passwordHash: null, // No password initially
       role: "doctor",
@@ -616,14 +415,16 @@ class UserService {
           .insert(users)
           .values(newUser)
           .returning();
+
         const doctorData = createDoctorData({
           id: insertedUser.id,
-          practiceId: userData.practiceId || null, // Allow null practice ID,
-          specialty: userData.specialization || "General Practice",
-          bio: userData.bio || null,
-          experience: userData.experience || null,
+          practiceId: validatedData.practiceId || null,
+          specialty: validatedData.specialization || "General Practice",
+          bio: validatedData.bio || null,
+          experience: validatedData.experience || null,
           isActive: true,
         });
+
         await tx.insert(doctors).values(doctorData);
         const { passwordHash, ...userWithoutSensitive } = insertedUser;
         return userWithoutSensitive;
@@ -632,23 +433,38 @@ class UserService {
         throw error;
       }
     });
+
     return transaction;
   }
 
   // Register a new user (legacy/general): delegates to admin or doctor registration
   async registerUser(userData) {
+    // Use Joi validation first
+    const validation = this.validateUserInput(userData);
+    if (!validation.isValid) {
+      throw new Error(validation.errors.join(", "));
+    }
+
+    const validatedData = validation.data;
+    
     // Determine role based on allowed admin emails
-    const normalizedEmail = userData.email.toLowerCase().trim();
+    const normalizedEmail = validatedData.email;
     if (this.isEmailAllowedToRegister(normalizedEmail)) {
-      return this.registerAdmin(userData);
+      return this.registerAdmin(validatedData);
     } else {
-      return this.registerDoctor(userData);
+      return this.registerDoctor(validatedData);
     }
   }
 
-  // Login user
   async loginUser(email, password) {
-    const normalizedEmail = email.toLowerCase().trim();
+    // Validate login input using Joi
+    const validation = this.validateLoginInput({ email, password });
+    if (!validation.isValid) {
+      throw new Error(validation.errors.join(", "));
+    }
+
+    const validatedData = validation.data;
+    const normalizedEmail = validatedData.email;
 
     // Get user with department information
     const [user] = await db
@@ -680,7 +496,8 @@ class UserService {
     if (!user.isActive) {
       throw new Error("Account is deactivated. Please contact your administrator.");
     }
-    const valid = await verifyPassword(password, user.passwordHash);
+
+    const valid = await verifyPassword(validatedData.password, user.passwordHash);
     if (!valid) throw new Error("Invalid email or password");
 
     // Ensure admin users have admin record with department
@@ -695,14 +512,10 @@ class UserService {
     };
 
     // Remove sensitive data from user object
-    const { passwordHash, departmentName, ...userWithoutSensitive } =
-      processedUser;
+    const { passwordHash, departmentName, ...userWithoutSensitive } = processedUser;
 
     // Generate both access and refresh tokens
-    const {
-      generateAccessToken,
-      generateRefreshToken,
-    } = require("../utils/jwt");
+    const { generateAccessToken, generateRefreshToken } = require("../utils/jwt");
     const accessToken = generateAccessToken(userWithoutSensitive);
     const refreshToken = generateRefreshToken(userWithoutSensitive);
 
@@ -713,14 +526,18 @@ class UserService {
     };
   }
 
-  // Get user by email with improved error handling
+  // Get user by email with improved error handling and Joi validation
   async getUserByEmail(email, includeSensitive = false) {
     try {
-      if (!email || typeof email !== "string") {
-        throw new Error("Valid email is required");
+      // Validate email input using Joi
+      const validation = this.validateEmailInput(email);
+      if (!validation.isValid) {
+        throw new Error(validation.errors.join(", "));
       }
 
-      const normalizedEmail = email.toLowerCase().trim();
+      const validatedData = validation.data;
+      const normalizedEmail = validatedData.email;
+
       const [user] = await db
         .select()
         .from(users)
@@ -740,12 +557,16 @@ class UserService {
     }
   }
 
-  // Get user by ID with improved error handling
+  // Get user by ID with improved error handling and Joi validation
   async getUserById(id, includeSensitive = false) {
     try {
-      if (!id || typeof id !== "string") {
-        throw new Error("Valid user ID is required");
+      // Validate user ID input using Joi
+      const validation = this.validateUserIdInput(id);
+      if (!validation.isValid) {
+        throw new Error(validation.errors.join(", "));
       }
+
+      const validatedData = validation.data;
 
       // Get user with department information
       const [user] = await db
@@ -761,12 +582,13 @@ class UserService {
           createdAt: users.createdAt,
           updatedAt: users.updatedAt,
           passwordHash: users.passwordHash,
+          phone: users.phone,
           departmentName: departments.name,
         })
         .from(users)
         .leftJoin(admins, eq(users.id, admins.id))
         .leftJoin(departments, eq(admins.departmentId, departments.id))
-        .where(eq(users.id, id));
+        .where(eq(users.id, validatedData.userId));
 
       if (!user) {
         throw new Error("User not found");
@@ -780,8 +602,7 @@ class UserService {
 
       // Only strip sensitive data if includeSensitive is false
       if (!includeSensitive) {
-        const { passwordHash, departmentName, ...userWithoutSensitive } =
-          processedUser;
+        const { passwordHash, departmentName, ...userWithoutSensitive } = processedUser;
         return userWithoutSensitive;
       }
 
@@ -792,44 +613,33 @@ class UserService {
     }
   }
 
-  // Update user profile
   async updateUserProfile(userId, updateData) {
     try {
-      if (!userId || typeof userId !== "string") {
-        throw new Error("Valid user ID is required");
+      // Validate user ID using Joi
+      const userIdValidation = this.validateUserIdInput(userId);
+      if (!userIdValidation.isValid) {
+        throw new Error(userIdValidation.errors.join(", "));
       }
 
-      // Validate update data
-      const allowedFields = [
-        "firstName",
-        "lastName",
-        "address",
-        "city",
-        "state",
-        "zip",
-        "country",
-        "profilePicture",
-        "emailVerified", // allow updating emailVerified
-      ];
-
-      const filteredData = {};
-      for (const [key, value] of Object.entries(updateData)) {
-        if (allowedFields.includes(key) && value !== undefined) {
-          filteredData[key] = value;
-        }
+      // Validate profile update data using Joi
+      const validation = this.validateProfileUpdateInput(updateData);
+      if (!validation.isValid) {
+        throw new Error(validation.errors.join(", "));
       }
 
-      if (Object.keys(filteredData).length === 0) {
+      const validatedData = validation.data;
+
+      if (Object.keys(validatedData).length === 0) {
         throw new Error("No valid fields to update");
       }
 
       // Add updated timestamp
-      filteredData.updatedAt = new Date().toISOString();
+      validatedData.updatedAt = new Date().toISOString();
 
       const [updatedUser] = await db
         .update(users)
-        .set(filteredData)
-        .where(eq(users.id, userId))
+        .set(validatedData)
+        .where(eq(users.id, userIdValidation.data.userId))
         .returning();
 
       if (!updatedUser) {
@@ -845,12 +655,16 @@ class UserService {
     }
   }
 
-  // Delete user (soft delete)
+  // Delete user (soft delete) with Joi validation
   async deleteUser(id, reason = null, deletedBy = null) {
     try {
-      if (!id || typeof id !== "string") {
-        throw new Error("Valid user ID is required");
+      // Validate user ID using Joi
+      const validation = this.validateUserIdInput(id);
+      if (!validation.isValid) {
+        throw new Error(validation.errors.join(", "));
       }
+
+      const validatedData = validation.data;
 
       const [deletedUser] = await db
         .update(users)
@@ -859,7 +673,7 @@ class UserService {
           status: "deleted",
           updatedAt: new Date().toISOString(),
         })
-        .where(eq(users.id, id))
+        .where(eq(users.id, validatedData.userId))
         .returning();
 
       if (!deletedUser) {
@@ -877,30 +691,34 @@ class UserService {
     }
   }
 
-  // Get all users with pagination and filtering
+  // Get all users with pagination and filtering using Joi validation
   async getAllUsers(page = 1, limit = 10, filters = {}) {
     try {
-      // Validate pagination parameters
-      const validatedPage = Math.max(1, parseInt(page) || 1);
-      const validatedLimit = Math.min(
-        this.MAX_PAGE_SIZE,
-        Math.max(1, parseInt(limit) || this.DEFAULT_PAGE_SIZE)
-      );
+      // Validate pagination input using Joi
+      const validation = this.validatePaginationInput(page, limit, filters);
+      if (!validation.isValid) {
+        throw new Error(validation.errors.join(", "));
+      }
+
+      const validatedData = validation.data;
+      const validatedPage = validatedData.page;
+      const validatedLimit = validatedData.limit;
+      const validatedFilters = validatedData.filters;
       const offset = (validatedPage - 1) * validatedLimit;
 
       // Build where conditions
       const whereConditions = [];
 
-      if (filters.role) {
-        whereConditions.push(eq(users.role, filters.role));
+      if (validatedFilters.role) {
+        whereConditions.push(eq(users.role, validatedFilters.role));
       }
 
-      if (filters.isActive !== undefined) {
-        whereConditions.push(eq(users.isActive, filters.isActive));
+      if (validatedFilters.isActive !== undefined) {
+        whereConditions.push(eq(users.isActive, validatedFilters.isActive));
       }
 
-      if (filters.search) {
-        const searchTerm = `%${filters.search}%`;
+      if (validatedFilters.search) {
+        const searchTerm = `%${validatedFilters.search}%`;
         whereConditions.push(
           or(
             like(users.firstName, searchTerm),
@@ -972,18 +790,22 @@ class UserService {
     }
   }
 
-  // Toggle user status
+  // Toggle user status with Joi validation
   async toggleUserStatus(userId) {
     try {
-      if (!userId || typeof userId !== "string") {
-        throw new Error("Valid user ID is required");
+      // Validate user ID using Joi
+      const validation = this.validateUserIdInput(userId);
+      if (!validation.isValid) {
+        throw new Error(validation.errors.join(", "));
       }
+
+      const validatedData = validation.data;
 
       // Get current user status
       const [currentUser] = await db
         .select()
         .from(users)
-        .where(eq(users.id, userId));
+        .where(eq(users.id, validatedData.userId));
 
       if (!currentUser) {
         throw new Error("User not found");
@@ -1000,7 +822,7 @@ class UserService {
           status: statusText,
           updatedAt: new Date().toISOString(),
         })
-        .where(eq(users.id, userId))
+        .where(eq(users.id, validatedData.userId))
         .returning();
 
       console.log(`User status toggled: ${updatedUser.email} -> ${statusText}`);
@@ -1014,16 +836,108 @@ class UserService {
     }
   }
 
-  // Determine user role based on email
-  determineUserRole(email) {
+  async setInitialPassword(verificationToken, newPassword) {
+    try {
+      // Validate the input using Joi
+      const validation = UserValidation.validateInitialPassword({
+        token: verificationToken,
+        password: newPassword,
+        confirmPassword: newPassword // For validation purposes
+      });
+      
+      if (UserValidation.hasValidationError(validation)) {
+        const errorMessage = UserValidation.formatValidationErrors(validation.error);
+        throw new Error(errorMessage);
+      }
+
+      // Decode and verify the token
+      const decoded = jwt.verify(verificationToken, process.env.JWT_SECRET);
+      const userId = decoded.userId;
+
+      // Check if user exists and is not verified
+      const user = await this.getUserById(userId);
+      if (!user) {
+        throw new Error("User not found");
+      }
+
+      if (user.emailVerified) {
+        throw new Error("Account is already verified");
+      }
+
+      // Hash password
+      const passwordHash = await hashPassword(newPassword);
+
+      // Update user to verified and set password
+      const [updatedUser] = await db
+        .update(users)
+        .set({
+          passwordHash: passwordHash,
+          emailVerified: true,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(users.id, userId))
+        .returning();
+
+      if (!updatedUser) {
+        throw new Error("Failed to update user");
+      }
+
+      // Store password in history
+      await this.storePasswordInHistory(userId, passwordHash);
+
+      return {
+        success: true,
+        message: "Password set successfully and account verified",
+        user: updatedUser,
+      };
+    } catch (error) {
+      console.error("Error setting initial password:", error);
+      throw error;
+    }
+  }
+
+  // Generate verification token for account verification
+  generateAccountVerificationToken(userId) {
+    return jwt.sign(
+      {
+        userId,
+        type: "account_verification",
+        exp: Math.floor(Date.now() / 1000) + 24 * 60 * 60, // 24 hours
+      },
+      process.env.JWT_SECRET
+    );
+  }
+
+  // Utility methods
+  isEmailAllowedToRegister(email) {
     if (!email || typeof email !== "string") {
-      return "doctor"; // Default role
+      return false;
     }
 
     const normalizedEmail = email.toLowerCase().trim();
-    return this.ALLOWED_ADMIN_EMAILS.includes(normalizedEmail)
-      ? "admin"
-      : "doctor";
+    return this.ALLOWED_ADMIN_EMAILS.includes(normalizedEmail);
+  }
+
+  isSuperAdminEmail(email) {
+    if (!email || typeof email !== "string") {
+      return false;
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    return this.ALLOWED_ADMIN_EMAILS.includes(normalizedEmail);
+  }
+
+  // Determine user role based on email
+  determineUserRole(email) {
+    // Validate email input
+    const validation = this.validateEmailInput(email);
+    if (!validation.isValid) {
+      return "doctor"; // Default role if validation fails
+    }
+
+    const validatedData = validation.data;
+    const normalizedEmail = validatedData.email;
+    return this.ALLOWED_ADMIN_EMAILS.includes(normalizedEmail) ? "admin" : "doctor";
   }
 
   // Get allowed admin emails
@@ -1031,21 +945,188 @@ class UserService {
     return [...this.ALLOWED_ADMIN_EMAILS];
   }
 
+  async getDepartmentIdByName(departmentName) {
+    try {
+      const result = await db
+        .select({ id: departments.id })
+        .from(departments)
+        .where(eq(departments.name, departmentName))
+        .limit(1);
+
+      return result[0]?.id || null;
+    } catch (error) {
+      console.error("Error getting department ID:", error);
+      return null;
+    }
+  }
+
+  async seedDepartments() {
+    try {
+      const departmentNames = [
+        "super_admin",
+        "onboarding",
+        "sales",
+        "support",
+        "billing_accounts",
+        "compliance",
+      ];
+      const departmentPrivileges = {
+        super_admin: ["full_access"],
+        onboarding: ["add_practices", "add_doctors", "verify_doctor_details"],
+        sales: ["communicate_potential_users", "view_adoption_funnel"],
+        support: ["help_technical_issues", "reset_doctor_access"],
+        billing_accounts: [
+          "manage_subscriptions",
+          "view_update_billing",
+          "send_invoices",
+        ],
+        compliance: [
+          "verify_credentials",
+          "approve_hpcsa_bhf",
+          "manage_document_verification",
+        ],
+      };
+
+      for (const deptName of departmentNames) {
+        const existingDept = await this.getDepartmentIdByName(deptName);
+        if (!existingDept) {
+          await db.insert(departments).values({
+            id: nanoid(25),
+            name: deptName,
+            privileges: departmentPrivileges[deptName] || [
+              "help_technical_issues",
+            ],
+          });
+          console.log(`Created department: ${deptName}`);
+        }
+      }
+    } catch (error) {
+      console.error("Error seeding departments:", error);
+    }
+  }
+
+  getPasswordRequirements() {
+    return getPasswordRequirements();
+  }
+
+  async getPasswordHistory(userId) {
+    try {
+      // Validate user ID using Joi
+      const validation = this.validateUserIdInput(userId);
+      if (!validation.isValid) {
+        throw new Error(validation.errors.join(", "));
+      }
+
+      const validatedData = validation.data;
+
+      const history = await db
+        .select()
+        .from(passwordHistory)
+        .where(eq(passwordHistory.userId, validatedData.userId))
+        .orderBy(desc(passwordHistory.createdAt));
+
+      return history;
+    } catch (error) {
+      console.error("Error getting password history:", error);
+      return [];
+    }
+  }
+
+  async storePasswordInHistory(userId, passwordHash) {
+    try {
+      // Validate user ID using Joi
+      const validation = this.validateUserIdInput(userId);
+      if (!validation.isValid) {
+        throw new Error(validation.errors.join(", "));
+      }
+
+      const validatedData = validation.data;
+
+      await db.insert(passwordHistory).values({
+        userId: validatedData.userId,
+        passwordHash: passwordHash,
+        createdAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("Error storing password in history:", error);
+    }
+  }
+
+  async updateUserPassword(userId, newPassword) {
+    try {
+      // Validate user ID using Joi
+      const userIdValidation = this.validateUserIdInput(userId);
+      if (!userIdValidation.isValid) {
+        throw new Error(userIdValidation.errors.join(", "));
+      }
+
+      const validatedUserId = userIdValidation.data.userId;
+
+      // Get password history
+      const historicalPasswords = await this.getPasswordHistory(validatedUserId);
+
+      // Validate new password
+      const validation = await validatePasswordComprehensive(
+        newPassword,
+        historicalPasswords
+      );
+      if (!validation.isValid) {
+        throw new Error(validation.error);
+      }
+
+      // Hash new password
+      const passwordHash = await hashPassword(newPassword);
+
+      // Update user password
+      const [updatedUser] = await db
+        .update(users)
+        .set({
+          passwordHash: passwordHash,
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(users.id, validatedUserId))
+        .returning();
+
+      if (!updatedUser) {
+        throw new Error("User not found");
+      }
+
+      // Store new password in history
+      await this.storePasswordInHistory(validatedUserId, passwordHash);
+
+      return { success: true, message: "Password updated successfully" };
+    } catch (error) {
+      console.error("Error updating user password:", error);
+      throw error;
+    }
+  }
+
   // Ensure admin user has admin record with department
   async ensureAdminRecord(userId) {
     try {
+      // Validate user ID using Joi
+      const validation = this.validateUserIdInput(userId);
+      if (!validation.isValid) {
+        throw new Error(validation.errors.join(", "));
+      }
+
+      const validatedData = validation.data;
+
       // Check if admin record exists
       const [existingAdmin] = await db
         .select()
         .from(admins)
-        .where(eq(admins.id, userId));
+        .where(eq(admins.id, validatedData.userId));
 
       if (existingAdmin) {
         return existingAdmin;
       }
 
       // Get user to check if they're an admin
-      const [user] = await db.select().from(users).where(eq(users.id, userId));
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, validatedData.userId));
 
       if (!user || user.role !== "admin") {
         throw new Error("User is not an admin");
@@ -1064,7 +1145,7 @@ class UserService {
       const [newAdmin] = await db
         .insert(admins)
         .values({
-          id: userId,
+          id: validatedData.userId,
           departmentId: departmentId,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -1072,7 +1153,7 @@ class UserService {
         .returning();
 
       console.log(
-        `Created admin record for user ${userId} with department super_admin`
+        `Created admin record for user ${validatedData.userId} with department super_admin`
       );
       return newAdmin;
     } catch (error) {
@@ -1080,42 +1161,13 @@ class UserService {
       throw error;
     }
   }
-
-  static async syncFromSupabaseUser(user) {
-    const db = require("../db");
-    const { users } = require("../schema/user");
-    let [localUser] = await db.select().from(users).where(users.id.eq(user.id));
-    if (!localUser) {
-      await db.insert(users).values({
-        id: user.id,
-        email: user.email,
-        firstName: user.user_metadata?.first_name || "",
-        lastName: user.user_metadata?.last_name || "",
-        role: user.user_metadata?.role || "doctor",
-        isActive: true,
-        emailVerified: user.email_confirmed_at ? true : false,
-        phoneNumber: user.user_metadata?.phone_number || "",
-        lastLoggedInAt: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
-      [localUser] = await db.select().from(users).where(users.id.eq(user.id));
-    } else {
-      await db
-        .update(users)
-        .set({
-          lastLoggedInAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        })
-        .where(users.id.eq(user.id));
-      [localUser] = await db.select().from(users).where(users.id.eq(user.id));
-    }
-    return localUser;
-  }
 }
 
 module.exports = new UserService();
 module.exports.hashPassword = hashPassword;
 module.exports.verifyPassword = verifyPassword;
 module.exports.generateJWT = generateJWT;
+module.exports.generateVerificationToken = generateVerificationToken;
 module.exports.createUser = createUser;
+module.exports.createAdminData = createAdminData;
+module.exports.createDoctorData = createDoctorData;

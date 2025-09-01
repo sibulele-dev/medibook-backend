@@ -1,4 +1,8 @@
 const { UserValidation } = require('../validation/user.validation');
+const { ContactValidation } = require('../validation/contact.validation');
+const { DoctorValidation } = require('../validation/doctor.validation');
+const { PracticeValidation } = require('../validation/practice.validation');
+const { PaymentValidation } = require('../validation/payment.validation');
 
 /**
  * Generic validation middleware factory
@@ -114,6 +118,66 @@ const validateCheckEmailRegistration = createValidationMiddleware(
   'query'
 );
 
+const validatePasswordRequirements = createValidationMiddleware(
+  UserValidation.validatePasswordRequirements,
+  'query'
+);
+
+const validateLogout = createValidationMiddleware(
+  UserValidation.validateLogout,
+  'body'
+);
+
+const validateContactForm = createValidationMiddleware(
+  ContactValidation.validateContactForm,
+  'body'
+);
+
+const validateRegisterDoctor = createValidationMiddleware(
+  DoctorValidation.validateRegisterDoctor,
+  'body'
+);
+
+const validateUpdateDoctor = createValidationMiddleware(
+  DoctorValidation.validateUpdateDoctor,
+  'body'
+);
+
+const validateDoctorId = createValidationMiddleware(
+  DoctorValidation.validateDoctorId,
+  'params'
+);
+
+const validateGetAllDoctors = createValidationMiddleware(
+  DoctorValidation.validateGetAllDoctors,
+  'query'
+);
+
+const validateCreatePractice = createValidationMiddleware(
+  PracticeValidation.validateCreatePractice,
+  'body'
+);
+
+const validateUpdatePractice = createValidationMiddleware(
+  PracticeValidation.validateUpdatePractice,
+  'body'
+);
+
+const validatePracticeId = createValidationMiddleware(
+  PracticeValidation.validatePracticeId,
+  'params'
+);
+
+const validateGetAllPractices = createValidationMiddleware(
+  PracticeValidation.validateGetAllPractices,
+  'query'
+);
+
+const validateInitiatePayment = createValidationMiddleware(
+  PaymentValidation.validateInitiatePayment,
+  'body'
+);
+
 // Combined validation middleware for routes that need multiple validations
 const validateUserIdAndBody = (bodyValidator) => {
   return [
@@ -204,6 +268,18 @@ module.exports = {
   validateUserIdParam,
   validateDeleteUser,
   validateCheckEmailRegistration,
+  validatePasswordRequirements,
+  validateLogout,
+  validateContactForm,
+  validateRegisterDoctor,
+  validateUpdateDoctor,
+  validateDoctorId,
+  validateGetAllDoctors,
+  validateCreatePractice,
+  validateUpdatePractice,
+  validatePracticeId,
+  validateGetAllPractices,
+  validateInitiatePayment,
   
   // Combined validation middleware
   validateUserIdAndBody,

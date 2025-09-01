@@ -7,6 +7,7 @@ const helmet = require("helmet");
 // Import routes
 const userRoutes = require("./routes/user.routes");
 const practiceRoutes = require("./routes/practice.routes");
+const paymentRoutes = require("./routes/payment.routes");
 
 // Import email configuration
 const { verifyConnection: verifyEmailConnection } = require("./config/email");

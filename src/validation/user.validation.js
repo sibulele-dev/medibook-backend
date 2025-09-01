@@ -302,6 +302,12 @@ const checkEmailRegistrationSchema = Joi.object({
   email: emailSchema
 }).messages(customMessages);
 
+// Password requirements schema
+const passwordRequirementsSchema = Joi.object({}).messages(customMessages);
+
+// Logout schema
+const logoutSchema = Joi.object({}).messages(customMessages);
+
 // Validation helper functions
 class UserValidation {
   /**
@@ -455,6 +461,26 @@ class UserValidation {
   }
 
   /**
+   * Validate password requirements
+   */
+  static validatePasswordRequirements(data) {
+    return passwordRequirementsSchema.validate(data, {
+      abortEarly: false,
+      stripUnknown: true
+    });
+  }
+
+  /**
+   * Validate logout
+   */
+  static validateLogout(data) {
+    return logoutSchema.validate(data, {
+      abortEarly: false,
+      stripUnknown: true
+    });
+  }
+
+  /**
    * Format validation errors for API response
    */
   static formatValidationErrors(error) {
@@ -496,6 +522,8 @@ module.exports = {
   userIdParamSchema,
   deleteUserSchema,
   checkEmailRegistrationSchema,
+  passwordRequirementsSchema,
+  logoutSchema,
   
   // Individual field schemas for reuse
   emailSchema,

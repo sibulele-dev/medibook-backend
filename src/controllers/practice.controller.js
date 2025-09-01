@@ -27,21 +27,7 @@ class PracticeController {
   // Get all practices
   async getAllPractices(req, res) {
     try {
-      const {
-        page = 1,
-        limit = 10,
-        search,
-        status,
-        specialization,
-      } = req.query;
-
-      const filters = {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        search,
-        status,
-        specialization,
-      };
+      const filters = req.query;
 
       const result = await practiceService.getAllPractices(filters);
 

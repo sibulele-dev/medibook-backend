@@ -1,14 +1,15 @@
 const express = require("express");
 const router = express.Router();
 const practiceController = require("../controllers/practice.controller");
+const { validateCreatePractice, validateUpdatePractice, validatePracticeId, validateGetAllPractices } = require("../middleware/validation.middleware");
 
 // All practice routes are now public
-router.get("/", practiceController.getAllPractices);
+router.get("/", validateGetAllPractices, practiceController.getAllPractices);
 router.get("/stats", practiceController.getPracticeStats);
 router.get("/status", practiceController.checkDatabaseStatus);
-router.get("/:id", practiceController.getPractice);
-router.post("/", practiceController.createPractice);
-router.put("/:id", practiceController.updatePractice);
-router.delete("/:id", practiceController.deletePractice);
+router.get("/:id", validatePracticeId, practiceController.getPractice);
+router.post("/", validateCreatePractice, practiceController.createPractice);
+router.put("/:id", validatePracticeId, validateUpdatePractice, practiceController.updatePractice);
+router.delete("/:id", validatePracticeId, practiceController.deletePractice);
 
 module.exports = router;

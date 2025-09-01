@@ -20,13 +20,15 @@ const {
     validateDeleteUser,
     validateCheckEmailRegistration,
     validateUserIdAndBody,
+    validatePasswordRequirements,
+    validateLogout,
     handleValidationError
   } = require('../middleware/validation.middleware');
 const { rateLimitMiddleware, resetRateLimit } = require("../middleware/rateLimit.middleware");
 
 
 // Public routes
-router.post("/login", validateUserLogin, rateLimitMiddleware, userController.login);
+router.post("/login", validateLogin, rateLimitMiddleware, userController.login);
 router.get("/check-email", validateCheckEmailRegistration, userController.checkEmailRegistration);
 router.get("/status", userController.getApiStatus);
 router.post("/verify-email", validateEmailVerification, userController.verifyEmail);
@@ -41,7 +43,6 @@ router.use(authMiddleware);
 // Profile routes
 router.get("/profile/:id?", userController.getProfile);
 router.put("/profile/:id?", validateProfileUpdate, userController.updateProfile);
-router.get("/profile", userController.getProfile);
 
 // Password management
 router.post("/password/change", validatePasswordChange, userController.changePassword);
@@ -53,15 +54,10 @@ router.get("/team-members", requireRole('admin'),  validateGetAllUsersQuery, use
 router.get("/debug-department", requireRole('admin'), userController.debugUserDepartment);
 router.delete("/:id", requireRole('admin'), validateUserIdParam, validateDeleteUser, userController.deleteUser);
 router.put("/:id/toggle-status", requireRole('admin'), validateUserIdParam,  userController.toggleUserStatus);
-router.get("/admin/allowed-emails", authMiddleware, requireRole('admin'), userController.getAllowedAdminEmails);
+router.get("/admin/allowed-emails", requireRole('admin'), userController.getAllowedAdminEmails);
 router.post("/register-admin", requireRole('admin'), validateAdminRegistration, userController.registerAdmin);
 router.post("/register-admin-member", requireRole('admin'), validateAdminMemberRegistration, userController.registerAdminMember);
 router.post("/register-doctor", requireRole('admin'), validateDoctorRegistration, userController.registerDoctor);
-router.delete('/admin/users/:id', authMiddleware, roleMiddleware(['admin']), validateUserIdParam, validateDeleteUser, userController.deleteUser);
-  
-
-  
-router.get('/admin/debug/user-department', authMiddleware, roleMiddleware(['admin']), userController.debugUserDepartment);
 
 // Error handling
 router.use(handleValidationError);

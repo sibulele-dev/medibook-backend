@@ -5,7 +5,7 @@ const emailService = require("../services/email.service");
 class DoctorController {
   async getAllDoctors(req, res) {
     try {
-      const doctors = await doctorService.getAllDoctors();
+      const doctors = await doctorService.getAllDoctors(req.query);
       res.status(200).json({ success: true, data: doctors });
     } catch (error) {
       res.status(500).json({
@@ -17,54 +17,7 @@ class DoctorController {
 
   async registerDoctor(req, res) {
     try {
-      const {
-        email,
-        firstName,
-        lastName,
-        specialty,
-        phoneNumber,
-        practiceId,
-        bio,
-        qualifications,
-        hpcsa,
-        experience,
-        languages,
-        telehealth,
-      } = req.body;
-
-      // Validate required fields
-      if (!email || !firstName || !lastName || !specialty || !phoneNumber) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "Required fields: email, firstName, lastName, specialty, phoneNumber. practiceId is optional.",
-        });
-      }
-
-      // Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid email format",
-        });
-      }
-
-      const normalizedEmail = email.toLowerCase().trim();
-      const doctorData = {
-        email: normalizedEmail,
-        firstName,
-        lastName,
-        specialty,
-        phoneNumber,
-        practiceId,
-        bio,
-        qualifications,
-        hpcsa,
-        experience,
-        languages,
-        telehealth,
-      };
+      const doctorData = req.body;
 
       // Register doctor without password
       const newDoctor = await doctorService.registerDoctor(doctorData);

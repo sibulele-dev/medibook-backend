@@ -31,9 +31,19 @@ class PaymentController {
   }
 
   async notifyPayment(req, res) {
-    // The payfast-lib handles the ITN verification and emits an event.
-    // We just need to acknowledge receipt of the ITN.
-    res.status(200).send('OK');
+    const itnData = req.body;
+    const reqIp = req.ip;
+
+    try {
+      const isValid = await paymentService.verifyItn(itnData, reqIp);
+      if (isValid) {
+        await paymentService.handleSuccessfulPayment(itnData);
+      }
+      res.status(200).send('OK');
+    } catch (error) {
+      console.error('Error handling ITN:', error);
+      res.status(500).send('Error');
+    }
   }
 
   async returnPayment(req, res) {

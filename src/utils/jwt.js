@@ -9,7 +9,7 @@ function generateAccessToken(user) {
   );
 }
 
-function generateRefreshToken(user) {
+async function generateRefreshToken(user) {
   const refreshToken = jwt.sign(
     { id: user.id },
     process.env.JWT_REFRESH_SECRET,
@@ -18,15 +18,25 @@ function generateRefreshToken(user) {
     }
   );
 
-  // Store the refresh token in Redis for validation and revocation
-  redisClient.set(refreshToken, user.id.toString(), {
+  // Store the refresh token in Redis, associating it with the user ID
+  // Key format: user:<userId>:refreshToken:<refreshTokenValue>
+  await redisClient.set(`user:${user.id}:refreshToken:${refreshToken}`, user.id.toString(), {
     EX: 30 * 24 * 60 * 60, // 30-day expiry in seconds
   });
 
   return refreshToken;
 }
 
+async function deleteAllRefreshTokensForUser(userId) {
+  // Find all refresh tokens associated with this user
+  const keys = await redisClient.keys(`user:${userId}:refreshToken:*`);
+  if (keys.length > 0) {
+    await redisClient.del(keys);
+  }
+}
+
 module.exports = {
   generateAccessToken,
   generateRefreshToken,
+  deleteAllRefreshTokensForUser,
 };

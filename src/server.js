@@ -3,6 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const db = require("./db");
 const helmet = require("helmet");
+const cookieParser = require("cookie-parser");
 
 // Import routes
 const userRoutes = require("./routes/user.routes");
@@ -27,6 +28,7 @@ app.use(
 );
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 app.use(helmet());
 
 // Routes

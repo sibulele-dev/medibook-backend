@@ -135,7 +135,7 @@ class UserService {
   }
 
   validateUserIdInput(userId) {
-    const validationResult = UserValidation.validateUserId({ userId });
+    const validationResult = UserValidation.validateUserIdParam({ id: userId });
     
     if (UserValidation.hasValidationError(validationResult)) {
       const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
@@ -515,9 +515,13 @@ class UserService {
     const { passwordHash, departmentName, ...userWithoutSensitive } = processedUser;
 
     // Generate both access and refresh tokens
-    const { generateAccessToken, generateRefreshToken } = require("../utils/jwt");
+    const { generateAccessToken, generateRefreshToken, deleteAllRefreshTokensForUser } = require("../utils/jwt");
+
+    // Invalidate all existing refresh tokens for this user
+    await deleteAllRefreshTokensForUser(userWithoutSensitive.id);
+
     const accessToken = generateAccessToken(userWithoutSensitive);
-    const refreshToken = generateRefreshToken(userWithoutSensitive);
+    const refreshToken = await generateRefreshToken(userWithoutSensitive);
 
     return {
       token: accessToken,
@@ -588,7 +592,7 @@ class UserService {
         .from(users)
         .leftJoin(admins, eq(users.id, admins.id))
         .leftJoin(departments, eq(admins.departmentId, departments.id))
-        .where(eq(users.id, validatedData.userId));
+        .where(eq(users.id, validatedData.id));
 
       if (!user) {
         throw new Error("User not found");
@@ -805,7 +809,7 @@ class UserService {
       const [currentUser] = await db
         .select()
         .from(users)
-        .where(eq(users.id, validatedData.userId));
+        .where(eq(users.id, validatedData.id));
 
       if (!currentUser) {
         throw new Error("User not found");
@@ -1022,7 +1026,7 @@ class UserService {
       const history = await db
         .select()
         .from(passwordHistory)
-        .where(eq(passwordHistory.userId, validatedData.userId))
+        .where(eq(passwordHistory.userId, validatedData.id))
         .orderBy(desc(passwordHistory.createdAt));
 
       return history;
@@ -1043,7 +1047,7 @@ class UserService {
       const validatedData = validation.data;
 
       await db.insert(passwordHistory).values({
-        userId: validatedData.userId,
+        userId: validatedData.id,
         passwordHash: passwordHash,
         createdAt: new Date().toISOString(),
       });
@@ -1102,7 +1106,7 @@ class UserService {
   }
 
   // Ensure admin user has admin record with department
-  async ensureAdminRecord(userId) {
+    async ensureAdminRecord(userId) {
     try {
       // Validate user ID using Joi
       const validation = this.validateUserIdInput(userId);
@@ -1116,7 +1120,7 @@ class UserService {
       const [existingAdmin] = await db
         .select()
         .from(admins)
-        .where(eq(admins.id, validatedData.userId));
+        .where(eq(admins.id, validatedData.id));
 
       if (existingAdmin) {
         return existingAdmin;
@@ -1126,7 +1130,7 @@ class UserService {
       const [user] = await db
         .select()
         .from(users)
-        .where(eq(users.id, validatedData.userId));
+        .where(eq(users.id, validatedData.id));
 
       if (!user || user.role !== "admin") {
         throw new Error("User is not an admin");
@@ -1145,7 +1149,7 @@ class UserService {
       const [newAdmin] = await db
         .insert(admins)
         .values({
-          id: validatedData.userId,
+          id: validatedData.id,
           departmentId: departmentId,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -1153,12 +1157,68 @@ class UserService {
         .returning();
 
       console.log(
-        `Created admin record for user ${validatedData.userId} with department super_admin`
+        `Created admin record for user ${validatedData.id} with department super_admin`
       );
       return newAdmin;
     } catch (error) {
       console.error("Error ensuring admin record:", error);
       throw error;
+    }
+  }
+
+  async getAllActiveSessions() {
+    const redisClient = require("../utils/redis");
+    const jwt = require("jsonwebtoken");
+
+    const sessionKeys = await redisClient.keys('user:*:refreshToken:*');
+    const sessions = [];
+
+    for (const key of sessionKeys) {
+      const userId = key.split(':')[1]; // Extract userId from key
+      const refreshToken = key.split(':')[3]; // Extract refreshToken from key
+
+      try {
+        const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+        const user = await this.getUserById(userId);
+
+        if (user) {
+          sessions.push({
+            token: refreshToken,
+            userId: user.id,
+            email: user.email,
+            name: `${user.firstName} ${user.lastName}`.trim(),
+            role: user.role,
+            issuedAt: new Date(decoded.iat * 1000).toISOString(),
+            expiresAt: new Date(decoded.exp * 1000).toISOString(),
+          });
+        }
+      } catch (error) {
+        console.warn(`Invalid or expired refresh token found in Redis: ${key}`, error.message);
+        // Optionally delete invalid token
+        await redisClient.del(key);
+      }
+    }
+    return {
+      allSessions: sessions,
+      sessionsByUser: Object.values(sessionsByUser),
+    };
+  }
+
+  async revokeSession(token) {
+    const redisClient = require("../utils/redis");
+    const jwt = require("jsonwebtoken");
+
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
+      const userId = decoded.id;
+
+      // Delete the specific token
+      await redisClient.del(`user:${userId}:refreshToken:${token}`);
+
+      return { success: true, message: "Session revoked successfully" };
+    } catch (error) {
+      console.error("Error revoking session:", error);
+      throw new Error("Failed to revoke session: " + error.message);
     }
   }
 }

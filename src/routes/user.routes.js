@@ -34,7 +34,7 @@ router.get("/status", userController.getApiStatus);
 router.post("/verify-email", validateEmailVerification, userController.verifyEmail);
 router.post("/resend-verification", validateResendVerification, userController.resendVerificationEmail);
 router.post("/set-initial-password", validateInitialPassword, userController.setInitialPassword);
-router.post("/refresh", validateRefreshToken, userController.refreshToken);
+router.post("/refresh", userController.refreshToken);
 router.get("/password/requirements", validatePasswordRequirements, userController.getPasswordRequirements);
 
 // Authenticated routes
@@ -58,6 +58,10 @@ router.get("/admin/allowed-emails", requireRole('admin'), userController.getAllo
 router.post("/register-admin", requireRole('admin'), validateAdminRegistration, userController.registerAdmin);
 router.post("/register-admin-member", requireRole('admin'), validateAdminMemberRegistration, userController.registerAdminMember);
 router.post("/register-doctor", requireRole('admin'), validateDoctorRegistration, userController.registerDoctor);
+
+// Session Management (Admin only)
+router.get("/sessions", requireRole('admin'), userController.getAllSessions);
+router.delete("/sessions/:token", requireRole('admin'), userController.revokeUserSession);
 
 // Error handling
 router.use(handleValidationError);

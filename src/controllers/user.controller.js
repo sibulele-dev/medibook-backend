@@ -243,28 +243,6 @@ class UserController {
 
       const { token, refreshToken, user } = await userService.loginUser(email, password);
 
-      const jwt = require("jsonwebtoken");
-      const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "your-refresh-secret-key";
-
-      let refreshTokenPayload;
-      try {
-        refreshTokenPayload = jwt.verify(refreshToken, JWT_REFRESH_SECRET);
-      } catch (err) {
-        // This should ideally not happen if userService.loginUser is working correctly
-        console.error("Error verifying refresh token during login:", err);
-        return res.status(500).json({ success: false, message: "Internal server error" });
-      }
-
-      // For single session per user: Invalidate any previous refresh token for this user
-      // We store the jti in Redis with userId as the key for easy lookup and invalidation.
-      const existingJti = await redisClient.get(user.id.toString());
-      if (existingJti) {
-        await redisClient.del(existingJti);
-      }
-
-      // Store the new refresh token's jti with the user ID as the key
-      await redisClient.set(user.id.toString(), refreshTokenPayload.jti, 'EX', 7 * 24 * 60 * 60); // 7 days expiration
-
       // Reset rate limit on successful login
       const { resetRateLimit } = require("../middleware/rateLimit.middleware");
       await resetRateLimit(req, res, () => {});
@@ -276,9 +254,9 @@ class UserController {
       res.cookie('refreshToken', refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production', // Use secure in production
-        sameSite: 'Strict', // Protect against CSRF
+        sameSite: 'Lax', // Protect against CSRF
         expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Example: 7 days
-        path: '/api/users/refresh', // Set path to refresh endpoint
+        path: '/', // Set path to refresh endpoint
       });
 
       res.status(200).json({
@@ -696,6 +674,8 @@ class UserController {
       const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "your-refresh-secret-key";
       const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
+      console.log("Redis client status:", redisClient.isOpen);
+
       let payload;
       try {
         payload = jwt.verify(oldRefreshToken, JWT_REFRESH_SECRET);
@@ -706,18 +686,17 @@ class UserController {
         });
       }
 
-      // Verify refresh token exists in Redis (using userId as key, jti as value)
-      const storedJti = await redisClient.get(payload.id.toString());
-      if (!storedJti || storedJti !== payload.jti) {
-        // If token not found or jti mismatch, it's either revoked or a newer session exists
+      // Verify refresh token exists in Redis
+      const userId = await redisClient.get(payload.jti);
+      if (!userId || userId !== payload.id) {
         return res.status(401).json({
           success: false,
-          message: "Refresh token not found or invalid (possibly a newer session exists)",
+          message: "Invalid or expired refresh token",
         });
       }
 
-      // Invalidate the old refresh token in Redis (rotation and single-session enforcement)
-      await redisClient.del(payload.id.toString()); // Delete the old jti associated with the user ID
+      // Invalidate the old refresh token in Redis
+      await redisClient.del(payload.jti);
 
       // Get user from database
       const user = await userService.getUserById(payload.id);
@@ -757,9 +736,9 @@ class UserController {
       res.cookie('refreshToken', newRefreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'Strict',
+        sameSite: 'Lax',
         expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        path: '/api/users/refresh',
+        path: '/',
       });
 
       res.json({
@@ -894,8 +873,8 @@ class UserController {
           const jwt = require("jsonwebtoken");
           const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "your-refresh-secret-key";
           const payload = jwt.verify(refreshToken, JWT_REFRESH_SECRET);
-          // Invalidate the refresh token in Redis using user.id as the key
-          await redisClient.del(payload.id.toString());
+          // Invalidate the refresh token in Redis
+          await redisClient.del(payload.jti);
         } catch (error) {
           console.error("Error invalidating refresh token on logout:", error);
           // Continue with logout even if token invalidation fails (e.g., token already expired/invalid)
@@ -906,9 +885,9 @@ class UserController {
       res.cookie('refreshToken', '', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'Strict',
+        sameSite: 'Lax',
         expires: new Date(0), // Expire immediately
-        path: '/api/users/refresh',
+        path: '/',
       });
 
       res.status(200).json({

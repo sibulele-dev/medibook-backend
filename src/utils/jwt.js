@@ -1,4 +1,5 @@
 const jwt = require("jsonwebtoken");
+const { v4: uuidv4 } = require('uuid');
 const redisClient = require("./redis");
 
 function generateAccessToken(user) {
@@ -10,28 +11,33 @@ function generateAccessToken(user) {
 }
 
 async function generateRefreshToken(user) {
+  const jti = uuidv4();
   const refreshToken = jwt.sign(
-    { id: user.id },
+    { id: user.id, jti },
     process.env.JWT_REFRESH_SECRET,
     {
       expiresIn: "30d",
     }
   );
 
-  // Store the refresh token in Redis, associating it with the user ID
-  // Key format: user:<userId>:refreshToken:<refreshTokenValue>
-  await redisClient.set(`user:${user.id}:refreshToken:${refreshToken}`, user.id.toString(), {
+  // Store the refresh token's JTI in Redis, associating it with the user ID
+  await redisClient.set(jti, user.id.toString(), {
     EX: 30 * 24 * 60 * 60, // 30-day expiry in seconds
   });
+
+  // Add the JTI to a set for the user
+  await redisClient.sAdd(`user:${user.id}:jtis`, jti);
 
   return refreshToken;
 }
 
 async function deleteAllRefreshTokensForUser(userId) {
-  // Find all refresh tokens associated with this user
-  const keys = await redisClient.keys(`user:${userId}:refreshToken:*`);
-  if (keys.length > 0) {
-    await redisClient.del(keys);
+  const userJtisKey = `user:${userId}:jtis`;
+  const jtis = await redisClient.sMembers(userJtisKey);
+
+  if (jtis && jtis.length > 0) {
+    await redisClient.del(jtis);
+    await redisClient.del(userJtisKey);
   }
 }
 

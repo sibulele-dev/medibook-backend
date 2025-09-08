@@ -497,6 +497,10 @@ class UserService {
       throw new Error("Account is deactivated. Please contact your administrator.");
     }
 
+    if (!user.passwordHash) {
+      throw new Error("Invalid email or password");
+    }
+
     const valid = await verifyPassword(validatedData.password, user.passwordHash);
     if (!valid) throw new Error("Invalid email or password");
 

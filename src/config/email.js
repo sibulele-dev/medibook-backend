@@ -5,14 +5,20 @@ const path = require("path");
 // Email configuration from environment variables
 const emailConfig = {
   host: process.env.EMAIL_HOST || "smtp.gmail.com",
-  port: parseInt(process.env.EMAIL_PORT) || 587,
-  secure: process.env.EMAIL_SECURE === "true", // true for 465, false for other ports
+  port: parseInt(process.env.EMAIL_PORT || "587", 10),
+  secure: process.env.EMAIL_SECURE === "true", // true for 465, false for 587/STARTTLS
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
-  // Optional: Additional settings
+  pool: true,
+  maxConnections: parseInt(process.env.EMAIL_POOL_MAX_CONNECTIONS || "5", 10),
+  maxMessages: parseInt(process.env.EMAIL_POOL_MAX_MESSAGES || "100", 10),
+  connectionTimeout: parseInt(process.env.EMAIL_CONNECTION_TIMEOUT || "10000", 10),
+  greetingTimeout: parseInt(process.env.EMAIL_GREETING_TIMEOUT || "10000", 10),
+  socketTimeout: parseInt(process.env.EMAIL_SOCKET_TIMEOUT || "20000", 10),
   tls: {
+    // For Gmail/STARTTLS over 587, keep true; set false only if you know the server uses self-signed certs
     rejectUnauthorized: process.env.EMAIL_TLS_REJECT_UNAUTHORIZED !== "false",
   },
 };

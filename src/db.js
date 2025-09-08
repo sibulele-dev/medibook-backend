@@ -2,16 +2,26 @@ const { drizzle } = require("drizzle-orm/postgres-js");
 const postgres = require("postgres");
 require("dotenv").config();
 
-// Create postgres client with proper configuration for Supabase
-const client = postgres(process.env.DATABASE_URL, {
-  max: 10, // Maximum number of connections
-  idle_timeout: 20, // Close idle connections after 20 seconds
-  connect_timeout: 10, // Connection timeout
-  ssl: "require", // Enable SSL for Supabase
-  onnotice: () => {}, // Suppress notice messages
+// Configurable Postgres client (supports local and hosted providers like Supabase)
+const {
+  DATABASE_URL,
+  DB_MAX,
+  DB_IDLE_TIMEOUT,
+  DB_CONNECT_TIMEOUT,
+  DB_SSL,
+} = process.env;
+
+// Interpret SSL option: "require" | "true" -> TLS; anything else -> undefined (no SSL)
+const sslOption = DB_SSL === "require" ? "require" : DB_SSL === "true" ? true : undefined;
+
+const client = postgres(DATABASE_URL, {
+  max: parseInt(DB_MAX || "10", 10),
+  idle_timeout: parseInt(DB_IDLE_TIMEOUT || "20", 10),
+  connect_timeout: parseInt(DB_CONNECT_TIMEOUT || "10", 10),
+  ssl: sslOption,
+  onnotice: () => {},
 });
 
-// Create Drizzle instance
 const db = drizzle(client);
 
 module.exports = db;

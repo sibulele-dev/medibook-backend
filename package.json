@@ -18,6 +18,7 @@
     "drizzle:check": "drizzle-kit check"
   },
   "dependencies": {
+    "@upstash/redis": "^1.35.3",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",

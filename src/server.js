@@ -9,6 +9,7 @@ const cookieParser = require("cookie-parser");
 const userRoutes = require("./routes/user.routes");
 const practiceRoutes = require("./routes/practice.routes");
 const paymentRoutes = require("./routes/payment.routes");
+const appointmentRoutes = require("./routes/appointment.routes");
 
 // Import email configuration
 const { verifyConnection: verifyEmailConnection } = require("./config/email");
@@ -35,6 +36,8 @@ app.use(helmet());
 app.use("/api/users", userRoutes);
 app.use("/api/practices", practiceRoutes);
 app.use("/api/doctors", require("./routes/doctor.routes"));
+app.use("/api/appointments", appointmentRoutes);
+app.use("/api/payments", paymentRoutes);
 
 // Basic route
 app.get("/", (req, res) => {

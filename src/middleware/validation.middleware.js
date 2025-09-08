@@ -3,6 +3,7 @@ const { ContactValidation } = require('../validation/contact.validation');
 const { DoctorValidation } = require('../validation/doctor.validation');
 const { PracticeValidation } = require('../validation/practice.validation');
 const { PaymentValidation } = require('../validation/payment.validation');
+const { AppointmentValidation } = require('../validation/appointment.validation');
 
 /**
  * Generic validation middleware factory
@@ -280,6 +281,15 @@ module.exports = {
   validatePracticeId,
   validateGetAllPractices,
   validateInitiatePayment,
+  // Appointment
+  validateCreateAppointment: createValidationMiddleware(
+    AppointmentValidation.validateCreateAppointment,
+    'body'
+  ),
+  validateAppointmentDoctorParam: createValidationMiddleware(
+    AppointmentValidation.validateDoctorIdParam,
+    'params'
+  ),
   
   // Combined validation middleware
   validateUserIdAndBody,

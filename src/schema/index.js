@@ -5,6 +5,7 @@ const {
   validatePracticeData,
 } = require("./practice");
 const { doctors } = require("./doctor");
+const { appointments } = require("./appointment");
 const {
   departments,
   departmentNameEnum,
@@ -24,6 +25,7 @@ module.exports = {
   users,
   practices,
   doctors,
+  appointments,
   admins,
   permissions,
   adminPermissions,

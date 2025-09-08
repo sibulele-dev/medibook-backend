@@ -1,1 +1,7 @@
+logs/
+*.log
+
+# Local environment files
+
+.env.local
 node_modules

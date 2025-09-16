@@ -24,11 +24,13 @@ class AppointmentController {
       const { doctorId } = req.params;
       const { date } = req.query; // Expecting date as a query parameter
 
-      if (!date) {
-        return res.status(400).json({ success: false, message: "Date is required" });
+      let list;
+      if (date) {
+        list = await appointmentService.getAppointmentsByDoctorIdAndDate(doctorId, date);
+      } else {
+        list = await appointmentService.getAppointmentsByDoctorId(doctorId);
       }
 
-      const list = await appointmentService.getAppointmentsByDoctorIdAndDate(doctorId, date);
       return res.json({ success: true, appointments: list, total: list.length });
     } catch (error) {
       return res.status(500).json({ success: false, message: error.message });

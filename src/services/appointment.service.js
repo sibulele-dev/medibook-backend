@@ -4,6 +4,21 @@ const { eq, and, asc } = require("drizzle-orm");
 const { nanoid } = require("nanoid");
 
 class AppointmentService {
+  async getAppointmentsByDoctorId(doctorId) {
+    try {
+      const appointmentsList = await db
+        .select()
+        .from(appointments)
+        .where(eq(appointments.doctorId, doctorId))
+        .orderBy(asc(appointments.date), asc(appointments.time));
+
+      return appointmentsList;
+    } catch (error) {
+      console.error("Error fetching appointments by doctor:", error);
+      throw new Error("Failed to fetch appointments");
+    }
+  }
+
   async getAppointmentsByDoctorIdAndDate(doctorId, date) {
     try {
       const startOfDay = new Date(date);

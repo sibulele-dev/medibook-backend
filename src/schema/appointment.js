@@ -1,5 +1,6 @@
 const { pgTable, text, timestamp } = require("drizzle-orm/pg-core");
 const { nanoid } = require("nanoid");
+const { doctors } = require("./doctor");
 
 const appointments = pgTable("appointments", {
   id: text("id")
@@ -9,7 +10,9 @@ const appointments = pgTable("appointments", {
   patientName: text("patient_name").notNull(),
   patientEmail: text("patient_email"),
   patientPhone: text("patient_phone").notNull(),
-  doctorId: text("doctor_id").notNull(),
+  doctorId: text("doctor_id")
+    .notNull()
+    .references(() => doctors.id),
   practiceId: text("practice_id"),
   date: text("date").notNull(),
   time: text("time").notNull(),

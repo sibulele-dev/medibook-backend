@@ -14,10 +14,32 @@ const appointmentRoutes = require("./routes/appointment.routes");
 // Import email configuration
 const { verifyConnection: verifyEmailConnection } = require("./config/email");
 
+// Import security middleware
+const { 
+  securityHeadersMiddleware, 
+  tokenFingerprintMiddleware, 
+  requestValidationMiddleware,
+  rateLimitHeadersMiddleware 
+} = require("./middleware/security.middleware");
+
+// Import admin security middleware
+const { 
+  requireAdminIPWhitelist,
+  requireAdminSessionTimeout,
+  requireAdminActionRateLimit,
+  detectPrivilegeEscalation
+} = require("./middleware/admin-security.middleware");
+
 const app = express();
 const PORT = process.env.PORT;
 
-// Middleware
+// Security middleware (applied first)
+// app.use(securityHeadersMiddleware);
+// app.use(tokenFingerprintMiddleware);
+// app.use(requestValidationMiddleware);
+// app.use(rateLimitHeadersMiddleware);
+
+// CORS configuration
 app.use(
   cors({
     origin:
@@ -27,10 +49,34 @@ app.use(
     credentials: true,
   })
 );
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+// Body parsing middleware
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
-app.use(helmet());
+
+// Enhanced helmet configuration
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", "https:"],
+      fontSrc: ["'self'", "data:"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'none'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false
+}));
+
+// Admin security middleware for admin routes
+// app.use("/api/users", detectPrivilegeEscalation());
+// app.use("/api/users", requireAdminActionRateLimit(100, 15)); // 100 actions per 15 minutes
+// app.use("/api/users", requireAdminSessionTimeout(30)); // 30 minute session timeout
 
 // Routes
 app.use("/api/users", userRoutes);

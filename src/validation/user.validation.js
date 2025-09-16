@@ -62,7 +62,7 @@ const paginationSchema = {
 
 // Search and filter validation schema
 const searchFilterSchema = {
-  search: Joi.string().trim().min(1).max(100).optional(),
+  search: Joi.string().trim().max(100).optional(),
   role: Joi.string().valid('admin', 'doctor').optional(),
   isActive: Joi.boolean().optional()
 };

@@ -1,60 +1,284 @@
-const fs = require('fs');
+const winston = require('winston');
 const path = require('path');
 
-const LOGS_DIR = path.join(process.cwd(), 'logs');
-const LOG_FILE = path.join(LOGS_DIR, 'backend.log');
-
-function ensureLogsDir() {
-  try {
-    if (!fs.existsSync(LOGS_DIR)) {
-      fs.mkdirSync(LOGS_DIR, { recursive: true });
-    }
-  } catch (e) {
-    // ignore
-  }
-}
-
-function appendLine(level, message, meta) {
-  try {
-    const enabled = process.env.ENABLE_FILE_LOGS === 'true';
-    if (!enabled) return;
-    ensureLogsDir();
-    const line = JSON.stringify({ timestamp: new Date().toISOString(), level, message, meta: meta ?? null }) + '\n';
-    fs.appendFileSync(LOG_FILE, line, { encoding: 'utf8' });
-  } catch (e) {
-    // ignore
-  }
-}
-
-function makeLogger(level) {
-  return (message, meta) => {
-    switch (level) {
-      case 'debug':
-        // eslint-disable-next-line no-console
-        console.debug(message, meta);
-        break;
-      case 'info':
-        // eslint-disable-next-line no-console
-        console.info(message, meta);
-        break;
-      case 'warn':
-        // eslint-disable-next-line no-console
-        console.warn(message, meta);
-        break;
-      case 'error':
-        // eslint-disable-next-line no-console
-        console.error(message, meta);
-        break;
-    }
-    appendLine(level, message, meta);
-  };
-}
-
-module.exports = {
-  debug: makeLogger('debug'),
-  info: makeLogger('info'),
-  warn: makeLogger('warn'),
-  error: makeLogger('error'),
+// Define log levels
+const levels = {
+  error: 0,
+  warn: 1,
+  info: 2,
+  http: 3,
+  debug: 4,
 };
 
+// Define colors for each level
+const colors = {
+  error: 'red',
+  warn: 'yellow',
+  info: 'green',
+  http: 'magenta',
+  debug: 'white',
+};
 
+// Tell winston that you want to link the colors
+winston.addColors(colors);
+
+// Define which logs to print based on environment
+const level = () => {
+  const env = process.env.NODE_ENV || 'development';
+  const isDevelopment = env === 'development';
+  return isDevelopment ? 'debug' : 'warn';
+};
+
+// Define different log formats
+const format = winston.format.combine(
+  winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss:ms' }),
+  winston.format.colorize({ all: true }),
+  winston.format.printf(
+    (info) => `${info.timestamp} ${info.level}: ${info.message}`,
+  ),
+);
+
+// Define transports
+const transports = [
+  // Console transport
+  new winston.transports.Console({
+    format: winston.format.combine(
+      winston.format.colorize(),
+      winston.format.simple()
+    )
+  }),
+  
+  // File transport for errors
+  new winston.transports.File({
+    filename: path.join(process.cwd(), 'logs', 'error.log'),
+    level: 'error',
+    format: winston.format.combine(
+      winston.format.timestamp(),
+      winston.format.json()
+    )
+  }),
+  
+  // File transport for all logs
+  new winston.transports.File({
+    filename: path.join(process.cwd(), 'logs', 'combined.log'),
+    format: winston.format.combine(
+      winston.format.timestamp(),
+      winston.format.json()
+    )
+  }),
+];
+
+// Create the logger
+const logger = winston.createLogger({
+  level: level(),
+  levels,
+  format,
+  transports,
+});
+
+// Create logs directory if it doesn't exist
+const fs = require('fs');
+const logsDir = path.join(process.cwd(), 'logs');
+if (!fs.existsSync(logsDir)) {
+  fs.mkdirSync(logsDir, { recursive: true });
+}
+
+// Authentication-specific logging functions
+const authLogger = {
+  loginAttempt: (email, ip, success = false, error = null) => {
+    const logData = {
+      event: 'login_attempt',
+      email,
+      ip,
+      success,
+      timestamp: new Date().toISOString(),
+      ...(error && { error: error.message })
+    };
+    
+    if (success) {
+      logger.info('Login successful', logData);
+    } else {
+      logger.warn('Login failed', logData);
+    }
+  },
+
+  tokenRefresh: (userId, ip, success = false, error = null) => {
+    const logData = {
+      event: 'token_refresh',
+      userId,
+      ip,
+      success,
+      timestamp: new Date().toISOString(),
+      ...(error && { error: error.message })
+    };
+    
+    if (success) {
+      logger.info('Token refresh successful', logData);
+    } else {
+      logger.warn('Token refresh failed', logData);
+    }
+  },
+
+  logout: (userId, ip) => {
+    const logData = {
+      event: 'logout',
+      userId,
+      ip,
+      timestamp: new Date().toISOString()
+    };
+    
+    logger.info('User logout', logData);
+  },
+
+  sessionCreated: (userId, sessionId, ip) => {
+    const logData = {
+      event: 'session_created',
+      userId,
+      sessionId,
+      ip,
+      timestamp: new Date().toISOString()
+    };
+    
+    logger.info('Session created', logData);
+  },
+
+  sessionRevoked: (userId, sessionId, ip) => {
+    const logData = {
+      event: 'session_revoked',
+      userId,
+      sessionId,
+      ip,
+      timestamp: new Date().toISOString()
+    };
+    
+    logger.info('Session revoked', logData);
+  },
+
+  rateLimitExceeded: (ip, endpoint, attempts) => {
+    const logData = {
+      event: 'rate_limit_exceeded',
+      ip,
+      endpoint,
+      attempts,
+      timestamp: new Date().toISOString()
+    };
+    
+    logger.warn('Rate limit exceeded', logData);
+  },
+
+  securityEvent: (event, details) => {
+    const logData = {
+      event: 'security_event',
+      securityEvent: event,
+      ...details,
+      timestamp: new Date().toISOString()
+    };
+    
+    logger.warn('Security event detected', logData);
+  },
+
+  securityEvent: (eventType, details = {}) => {
+    const logData = {
+      event: 'security_event',
+      eventType,
+      timestamp: new Date().toISOString(),
+      ...details
+    };
+    
+    logger.warn(`Security event: ${eventType}`, logData);
+  }
+};
+
+// Performance monitoring
+const performanceLogger = {
+  apiRequest: (method, url, duration, statusCode, userId = null) => {
+    const logData = {
+      event: 'api_request',
+      method,
+      url,
+      duration: `${duration}ms`,
+      statusCode,
+      userId,
+      timestamp: new Date().toISOString()
+    };
+    
+    if (duration > 1000) {
+      logger.warn('Slow API request', logData);
+    } else {
+      logger.http('API request', logData);
+    }
+  },
+
+  databaseQuery: (query, duration, success = true) => {
+    const logData = {
+      event: 'database_query',
+      query: query.substring(0, 100) + '...', // Truncate long queries
+      duration: `${duration}ms`,
+      success,
+      timestamp: new Date().toISOString()
+    };
+    
+    if (duration > 500) {
+      logger.warn('Slow database query', logData);
+    } else {
+      logger.debug('Database query', logData);
+    }
+  }
+};
+
+// Error logging with context
+const errorLogger = {
+  authentication: (error, context = {}) => {
+    const logData = {
+      event: 'authentication_error',
+      error: error.message,
+      stack: error.stack,
+      ...context,
+      timestamp: new Date().toISOString()
+    };
+    
+    logger.error('Authentication error', logData);
+  },
+
+  authorization: (error, context = {}) => {
+    const logData = {
+      event: 'authorization_error',
+      error: error.message,
+      stack: error.stack,
+      ...context,
+      timestamp: new Date().toISOString()
+    };
+    
+    logger.error('Authorization error', logData);
+  },
+
+  validation: (error, context = {}) => {
+    const logData = {
+      event: 'validation_error',
+      error: error.message,
+      ...context,
+      timestamp: new Date().toISOString()
+    };
+    
+    logger.warn('Validation error', logData);
+  },
+
+  system: (error, context = {}) => {
+    const logData = {
+      event: 'system_error',
+      error: error.message,
+      stack: error.stack,
+      ...context,
+      timestamp: new Date().toISOString()
+    };
+    
+    logger.error('System error', logData);
+  }
+};
+
+module.exports = {
+  logger,
+  authLogger,
+  performanceLogger,
+  errorLogger
+};

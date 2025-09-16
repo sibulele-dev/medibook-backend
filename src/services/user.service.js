@@ -1176,6 +1176,7 @@ class UserService {
 
     const sessionKeys = await redisClient.keys('user:*:refreshToken:*');
     const sessions = [];
+    const sessionsByUser = {};
 
     for (const key of sessionKeys) {
       const userId = key.split(':')[1]; // Extract userId from key
@@ -1186,7 +1187,7 @@ class UserService {
         const user = await this.getUserById(userId);
 
         if (user) {
-          sessions.push({
+          const session = {
             token: refreshToken,
             userId: user.id,
             email: user.email,
@@ -1194,7 +1195,23 @@ class UserService {
             role: user.role,
             issuedAt: new Date(decoded.iat * 1000).toISOString(),
             expiresAt: new Date(decoded.exp * 1000).toISOString(),
-          });
+          };
+          sessions.push(session);
+
+          if (!sessionsByUser[user.id]) {
+            sessionsByUser[user.id] = {
+              user: {
+                id: user.id,
+                email: user.email,
+                name: `${user.firstName} ${user.lastName}`.trim(),
+                role: user.role,
+              },
+              count: 0,
+              sessions: [],
+            };
+          }
+          sessionsByUser[user.id].count++;
+          sessionsByUser[user.id].sessions.push(session);
         }
       } catch (error) {
         console.warn(`Invalid or expired refresh token found in Redis: ${key}`, error.message);

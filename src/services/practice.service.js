@@ -97,20 +97,15 @@ class PracticeService {
   // Get all practices with pagination and filters
   async getAllPractices(filters = {}) {
     try {
-      const { page = 1, limit = 10, search, status } = filters;
+      console.log('Fetching practices with filters:', filters);
+      const { page = 1, limit = 20, search, status } = filters;
       const offset = (page - 1) * limit;
 
       // Build where conditions
       const whereConditions = [];
 
       if (search) {
-        whereConditions.push(
-          or(
-            like(practices.name, `%${search}%`),
-            like(practices.address, `%${search}%`),
-            like(practices.phone, `%${search}%`)
-          )
-        );
+        whereConditions.push(like(practices.name, `${search}%`));
       }
 
       if (status) {
@@ -156,7 +151,7 @@ class PracticeService {
           practices.createdAt,
           practices.updatedAt
         )
-        .orderBy(desc(practices.createdAt))
+        .orderBy(asc(practices.name))
         .limit(limit)
         .offset(offset);
 

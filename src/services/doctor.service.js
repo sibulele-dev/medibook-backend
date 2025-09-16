@@ -2,7 +2,7 @@ const db = require("../db");
 const { doctors } = require("../schema/doctor");
 const { users } = require("../schema/user");
 const userService = require("../services/user.service");
-const { eq } = require("drizzle-orm");
+const { eq, and, or, like, asc, sql } = require("drizzle-orm");
 const { nanoid } = require("nanoid");
 
 function createDoctorData(data) {
@@ -34,8 +34,22 @@ function validateDoctorData(data) {
 }
 
 class DoctorService {
-  async getAllDoctors() {
+  async getAllDoctors(filters = {}) {
     try {
+      console.log("DoctorService: Fetching doctors with filters:", filters);
+      const { page = 1, limit = 20, search } = filters;
+      const offset = (page - 1) * limit;
+
+      const whereConditions = [eq(users.role, "doctor")];
+      if (search) {
+        whereConditions.push(
+          or(
+            like(users.firstName, `${search}%`),
+            like(users.lastName, `${search}%`)
+          )
+        );
+      }
+
       // Join doctors with users and filter by user role 'doctor'
       const allDoctors = await db
         .select({
@@ -60,13 +74,34 @@ class DoctorService {
           isActive: doctors.isActive,
           createdAt: doctors.createdAt,
           updatedAt: doctors.updatedAt,
+          practiceName: practices.name, // Include practice name
         })
         .from(doctors)
         .innerJoin(users, eq(doctors.id, users.id))
-        .where(eq(users.role, "doctor"));
-      return allDoctors;
+        .leftJoin(practices, eq(doctors.practiceId, practices.id))
+        .where(and(...whereConditions))
+        .orderBy(asc(users.firstName), asc(users.lastName))
+        .limit(limit)
+        .offset(offset);
+
+      console.log("DoctorService: Fetched doctors count:", allDoctors.length);
+
+      const totalResult = await db.select({ count: sql`count(*)` }).from(users).where(and(...whereConditions));
+      const total = Number(totalResult[0]?.count) || 0;
+
+      console.log("DoctorService: Total doctors count:", total);
+
+      return {
+        doctors: allDoctors,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
     } catch (error) {
-      console.error("Get all doctors error:", error);
+      console.error("DoctorService: Error in getAllDoctors:", error);
       throw new Error("Failed to fetch doctors");
     }
   }

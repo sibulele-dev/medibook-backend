@@ -11,17 +11,29 @@ const customMessages = {
 };
 
 const practiceSchema = {
-    name: Joi.string().trim().min(2).max(100).required().label('Practice Name'),
-    address: Joi.string().trim().min(5).max(255).required().label('Address'),
-    city: Joi.string().trim().min(2).max(100).required().label('City'),
-    state: Joi.string().trim().min(2).max(100).required().label('State'),
-    zip: Joi.string().trim().min(2).max(20).required().label('Zip Code'),
-    country: Joi.string().trim().min(2).max(100).required().label('Country'),
-    phone: Joi.string().pattern(/^[\+]?[1-9][\d]{0,15}$/).required().label('Phone Number'),
-    email: Joi.string().email({ minDomainSegments: 2, tlds: { allow: true } }).lowercase().trim().max(255).required().label('Email'),
-    website: Joi.string().uri().optional().allow(null, '').label('Website'),
-    specialization: Joi.array().items(Joi.string().trim().max(100)).optional().label('Specialization'),
-    status: Joi.string().valid('active', 'inactive', 'pending').default('pending').label('Status'),
+  name: Joi.string().trim().min(2).max(100).required().label('Practice Name'),
+  address: Joi.string().trim().min(5).max(255).required().label('Address'),
+  city: Joi.string().trim().min(2).max(100).required().label('City'),
+  state: Joi.string().trim().min(2).max(100).required().label('State'),
+  zip: Joi.string().trim().min(2).max(20).required().label('Zip Code'),
+  country: Joi.string().trim().min(2).max(100).required().label('Country'),
+  phone: Joi.string()
+    .pattern(/^[\+]?[1-9][\d]{0,15}$/)
+    .required()
+    .label('Phone Number'),
+  email: Joi.string()
+    .email({ minDomainSegments: 2, tlds: { allow: true } })
+    .lowercase()
+    .trim()
+    .max(255)
+    .required()
+    .label('Email'),
+  website: Joi.string().uri().optional().allow(null, '').label('Website'),
+  specialization: Joi.array()
+    .items(Joi.string().trim().max(100))
+    .optional()
+    .label('Specialization'),
+  status: Joi.string().valid('active', 'inactive', 'pending').default('pending').label('Status'),
 };
 
 // Create practice validation schema
@@ -29,28 +41,22 @@ const createPracticeSchema = Joi.object(practiceSchema).messages(customMessages)
 
 // Update practice validation schema
 const updatePracticeSchema = Joi.object({
-    ...Object.keys(practiceSchema).reduce((acc, key) => {
-        acc[key] = practiceSchema[key].optional();
-        return acc;
-    }, {}),
+  ...Object.keys(practiceSchema).reduce((acc, key) => {
+    acc[key] = practiceSchema[key].optional();
+    return acc;
+  }, {}),
 }).messages(customMessages);
 
 // Practice ID parameter validation schema
 const practiceIdSchema = Joi.object({
-  id: Joi.string()
-    .trim()
-    .min(20)
-    .max(30)
-    .required()
-    .label('Practice ID')
-    .messages(customMessages),
+  id: Joi.string().trim().min(20).max(30).required().label('Practice ID').messages(customMessages),
 }).messages(customMessages);
 
 // Get all practices query validation schema
 const getAllPracticesSchema = Joi.object({
-  page: Joi.number().integer().min(1).default(1),
-  limit: Joi.number().integer().min(1).max(100).default(10),
-  search: Joi.string().trim().min(1).max(100).optional(),
+  page: Joi.number().integer().min(1).default(1).optional(),
+  limit: Joi.number().integer().min(1).max(1000).default(10).optional(),
+  search: Joi.string().trim().max(100).optional(),
   status: Joi.string().valid('active', 'inactive', 'pending').optional(),
   specialization: Joi.string().trim().min(2).max(100).optional(),
 }).messages(customMessages);
@@ -58,36 +64,36 @@ const getAllPracticesSchema = Joi.object({
 // Validation helper class
 class PracticeValidation {
   static validateCreatePractice(data) {
-    return createPracticeSchema.validate(data, { 
+    return createPracticeSchema.validate(data, {
       abortEarly: false,
-      stripUnknown: true 
+      stripUnknown: true,
     });
   }
 
   static validateUpdatePractice(data) {
-    return updatePracticeSchema.validate(data, { 
+    return updatePracticeSchema.validate(data, {
       abortEarly: false,
-      stripUnknown: true 
+      stripUnknown: true,
     });
   }
 
   static validatePracticeId(data) {
-    return practiceIdSchema.validate(data, { 
+    return practiceIdSchema.validate(data, {
       abortEarly: false,
-      stripUnknown: true 
+      stripUnknown: true,
     });
   }
 
   static validateGetAllPractices(data) {
-    return getAllPracticesSchema.validate(data, { 
+    return getAllPracticesSchema.validate(data, {
       abortEarly: false,
-      stripUnknown: true 
+      stripUnknown: true,
     });
   }
 
   static formatValidationErrors(error) {
     if (!error.details) return 'Validation failed';
-    return error.details.map(detail => detail.message).join(', ');
+    return error.details.map((detail) => detail.message).join(', ');
   }
 
   static hasValidationError(validationResult) {
@@ -105,5 +111,5 @@ module.exports = {
   practiceIdSchema,
   getAllPracticesSchema,
   PracticeValidation,
-  customMessages
+  customMessages,
 };

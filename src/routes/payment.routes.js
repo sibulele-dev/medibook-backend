@@ -2,10 +2,10 @@ const express = require("express");
 const router = express.Router();
 const paymentController = require("../controllers/payment.controller");
 const { validateInitiatePayment } = require("../middleware/validation.middleware");
-const authMiddleware = require("../middleware/auth.middleware");
+
 
 // Initiate a payment
-router.post("/initiate", authMiddleware, validateInitiatePayment, paymentController.initiatePayment);
+router.post("/initiate",  validateInitiatePayment, paymentController.initiatePayment);
 
 // PayFast ITN callback
 router.post("/notify", paymentController.notifyPayment);

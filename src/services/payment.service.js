@@ -83,6 +83,9 @@ class PaymentService {
   }
 
   async verifyItn(itnData, reqIp) {
+    // TODO: The list of valid PayFast IP addresses is hardcoded here.
+    // It is recommended to periodically update this list from the official PayFast documentation
+    // to ensure the security and reliability of the ITN verification process.
     const validIps = [
       '3.163.236.237',
       '3.163.238.237',

@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const { sql } = require("drizzle-orm");
 const db = require("./db");
 const helmet = require("helmet");
 const cookieParser = require("cookie-parser");
@@ -10,6 +11,7 @@ const userRoutes = require("./routes/user.routes");
 const practiceRoutes = require("./routes/practice.routes");
 const paymentRoutes = require("./routes/payment.routes");
 const appointmentRoutes = require("./routes/appointment.routes");
+const onboardingRoutes = require("./routes/onboarding.route");
 
 // Import email configuration
 const { verifyConnection: verifyEmailConnection } = require("./config/email");
@@ -84,6 +86,8 @@ app.use("/api/practices", practiceRoutes);
 app.use("/api/doctors", require("./routes/doctor.routes"));
 app.use("/api/appointments", appointmentRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/subscriptions", require("./routes/subscription.routes"));
+app.use("/api/onboarding", onboardingRoutes);
 
 // Basic route
 app.get("/", (req, res) => {
@@ -103,7 +107,7 @@ app.get("/health", (req, res) => {
 app.get("/db-test", async (req, res) => {
   try {
     // Test database connection with a simple query
-    const result = await db.execute("SELECT NOW() as current_time");
+    const result = await db.execute(sql`SELECT NOW() as current_time`);
     res.json({
       message: "Database connection successful!",
       timestamp: result[0].current_time,
@@ -126,7 +130,7 @@ const server = app.listen(PORT, async () => {
 
   // Test database connection
   try {
-    const result = await db.execute("SELECT 1 as connected");
+    const result = await db.execute(sql`SELECT 1 as connected`);
     if (result && result[0] && result[0].connected === 1) {
       console.log("✅ Database: PostgreSQL with Drizzle ORM (connected)");
     } else {

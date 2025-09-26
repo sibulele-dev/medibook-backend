@@ -1,7 +1,7 @@
 const userService = require('../services/user.service');
 const emailService = require('../services/email.service');
 const { UserValidation } = require('../validation/user.validation');
-const { eq } = require('drizzle-orm');
+const { eq, sql } = require('drizzle-orm');
 const db = require('../db');
 const { users, admins, departments } = require('../schema');
 const redisClient = require('../utils/redis');
@@ -1028,7 +1028,7 @@ class UserController {
 
     try {
       // Check DB connection
-      await db.execute('SELECT 1');
+      await db.execute(sql`SELECT 1`);
       dbStatus = 'connected';
     } catch (dbError) {
       console.error('DB connection check failed:', dbError.message);
@@ -1039,7 +1039,7 @@ class UserController {
       // Check Redis connection and get logged in users
       await redisClient.ping();
       redisStatus = 'connected';
-      loggedInUsers = await redisClient.dbSize();
+      loggedInUsers = -1; // DBSIZE not supported in this configuration
     } catch (redisError) {
       console.error('Redis connection check failed:', redisError.message);
       redisStatus = 'disconnected';

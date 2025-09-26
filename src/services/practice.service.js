@@ -97,7 +97,6 @@ class PracticeService {
   // Get all practices with pagination and filters
   async getAllPractices(filters = {}) {
     try {
-      console.log('Fetching practices with filters:', filters);
       const { page = 1, limit = 20, search, status } = filters;
       const offset = (page - 1) * limit;
 
@@ -131,7 +130,7 @@ class PracticeService {
           status: practices.status,
           createdAt: practices.createdAt,
           updatedAt: practices.updatedAt,
-          doctorCount: sql`COUNT(doctors.id)`,
+          doctorCount: count(doctors.id),
         })
         .from(practices)
         .leftJoin(doctors, eq(practices.id, doctors.practiceId))
@@ -157,7 +156,7 @@ class PracticeService {
 
       // Get total count using sql template
       const totalResult = await db
-        .select({ count: sql`count(*)` })
+        .select({ count: count() })
         .from(practices)
         .where(whereClause);
 
@@ -310,17 +309,17 @@ class PracticeService {
       const [totalPractices, activePractices, totalDoctors] = await Promise.all(
         [
           // Total practices
-          db.select({ count: sql`count(*)` }).from(practices),
+          db.select({ count: count() }).from(practices),
 
           // Active practices
           db
-            .select({ count: sql`count(*)` })
+            .select({ count: count() })
             .from(practices)
             .where(eq(practices.status, "active")),
 
           // Total doctors (from users table)
           db
-            .select({ count: sql`count(*)` })
+            .select({ count: count() })
             .from(users)
             .where(eq(users.role, "doctor")),
         ]

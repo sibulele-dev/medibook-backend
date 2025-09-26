@@ -1,6 +1,6 @@
 const { eq, and, or, like, desc, asc, count, sql } = require("drizzle-orm");
 const db = require("../db");
-const { users, doctors, admins, departments, passwordHistory } = require("../schema");
+const { users, doctors, admins, departments, passwordHistory, subscriptions } = require("../schema");
 const { UserValidation } = require("../validation/user.validation");
 const { nanoid } = require("nanoid");
 const bcrypt = require("bcrypt");
@@ -402,7 +402,7 @@ class UserService {
     const newUser = createUser({
       ...validatedData,
       email: normalizedEmail,
-      passwordHash: null, // No password initially
+      passwordHash: validatedData.password ? await hashPassword(validatedData.password) : null, // Hash password if provided
       role: "doctor",
       isActive: true,
       emailVerified: false, // Will be verified when they set password
@@ -419,9 +419,15 @@ class UserService {
         const doctorData = createDoctorData({
           id: insertedUser.id,
           practiceId: validatedData.practiceId || null,
-          specialty: validatedData.specialization || "General Practice",
+          specialty: validatedData.specialty || "General Practice",
           bio: validatedData.bio || null,
+          qualifications: validatedData.qualifications || null,
+          hpcsa: validatedData.hpcsa || null,
           experience: validatedData.experience || null,
+          languages: validatedData.languages || null,
+          telehealth: validatedData.telehealth || false,
+          status: validatedData.status || 'pending',
+          profilePicUrl: validatedData.profilePicUrl || null,
           isActive: true,
         });
 

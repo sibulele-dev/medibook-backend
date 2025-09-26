@@ -38,12 +38,8 @@ if (UPSTASH_REDIS_REST_URL && UPSTASH_REDIS_REST_TOKEN) {
     // Hash commands
     hset: async (key, field, value) => {
       if (typeof field === 'object' && value === undefined) {
-        // Handle hset(key, object) format - convert object to flat key-value pairs
-        const flatObject = {};
-        for (const [k, v] of Object.entries(field)) {
-          flatObject[k] = typeof v === 'object' ? JSON.stringify(v) : String(v);
-        }
-        return upstash.hset(key, flatObject);
+        // Handle hset(key, object) format
+        return upstash.hset(key, field);
       }
       // Handle hset(key, field, value) format
       return upstash.hset(key, { [field]: value });

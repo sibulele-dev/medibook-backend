@@ -1,6 +1,25 @@
 const { sendEmail, emailTemplates } = require("../config/email");
+const onboardingAcknowledgementEmail = require("../templates/onboardingAcknowledgement");
 
 class EmailService {
+  // Send onboarding acknowledgment email
+  async sendOnboardingAcknowledgementEmail(userEmail, doctorName) {
+    try {
+      const htmlContent = onboardingAcknowledgementEmail(doctorName);
+      const result = await sendEmail({
+        to: userEmail,
+        subject: "MediBook Onboarding Acknowledgment",
+        html: htmlContent,
+        text: `Welcome to MediBook, ${doctorName}! Thank you for signing up. We have received your application and it is currently under review. We will verify your details and send you another email once your account has been approved and activated. In the meantime, if you have any questions, please don't hesitate to contact our support team. Best regards, The MediBook Team`,
+      });
+
+      return result;
+    } catch (error) {
+      console.error("Error sending onboarding acknowledgment email:", error);
+      throw error;
+    }
+  }
+
   // Send welcome email
   async sendWelcomeEmail(userEmail, userName) {
     try {

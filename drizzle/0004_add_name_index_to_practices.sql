@@ -1,1 +1,0 @@
-CREATE INDEX idx_practices_name ON practices(name);

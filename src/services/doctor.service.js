@@ -1,6 +1,7 @@
 const db = require("../db");
 const { doctors } = require("../schema/doctor");
 const { users } = require("../schema/user");
+const { practices } = require("../schema/practice");
 const userService = require("../services/user.service");
 const { eq, and, or, like, asc, sql } = require("drizzle-orm");
 const { nanoid } = require("nanoid");
@@ -36,7 +37,6 @@ function validateDoctorData(data) {
 class DoctorService {
   async getAllDoctors(filters = {}) {
     try {
-      console.log("DoctorService: Fetching doctors with filters:", filters);
       const { page = 1, limit = 20, search } = filters;
       const offset = (page - 1) * limit;
 
@@ -84,12 +84,8 @@ class DoctorService {
         .limit(limit)
         .offset(offset);
 
-      console.log("DoctorService: Fetched doctors count:", allDoctors.length);
-
       const totalResult = await db.select({ count: sql`count(*)` }).from(users).where(and(...whereConditions));
       const total = Number(totalResult[0]?.count) || 0;
-
-      console.log("DoctorService: Total doctors count:", total);
 
       return {
         doctors: allDoctors,
@@ -108,7 +104,7 @@ class DoctorService {
 
   async getDoctorById(doctorId) {
     try {
-      const [doctor] = await db
+      const result = await db
         .select({
           userId: users.id,
           email: users.email,
@@ -133,13 +129,51 @@ class DoctorService {
         .from(doctors)
         .innerJoin(users, eq(doctors.id, users.id))
         .where(eq(users.id, doctorId));
-      if (!doctor || doctor.length === 0) {
+      if (result.length === 0) {
         return null;
       }
-      return doctor[0];
+      return result[0];
     } catch (error) {
       console.error("Get doctor by ID error:", error);
       throw new Error("Failed to fetch doctor");
+    }
+  }
+
+  async findDoctorByEmail(email) {
+    try {
+      const result = await db
+        .select({
+          userId: users.id,
+          email: users.email,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          phoneNumber: users.phone,
+          role: users.role,
+          doctorId: doctors.id,
+          specialty: doctors.specialty,
+          practiceId: doctors.practiceId,
+          hpcsa: doctors.hpcsa,
+          experience: doctors.experience,
+          bio: doctors.bio,
+          qualifications: doctors.qualifications,
+          languages: doctors.languages,
+          telehealth: doctors.telehealth,
+          status: doctors.status,
+          isActive: doctors.isActive,
+          createdAt: doctors.createdAt,
+          updatedAt: doctors.updatedAt,
+        })
+        .from(doctors)
+        .innerJoin(users, eq(doctors.id, users.id))
+        .where(and(eq(users.email, email), eq(users.role, "doctor")));
+
+      if (result.length === 0) {
+        return null;
+      }
+      return result[0];
+    } catch (error) {
+      console.error("Find doctor by email error:", error);
+      throw new Error("Failed to find doctor by email");
     }
   }
 
@@ -156,23 +190,27 @@ class DoctorService {
         email: doctorData.email,
         firstName: doctorData.firstName,
         lastName: doctorData.lastName,
-        phone: doctorData.phoneNumber,
+        phone: doctorData.phone,
+        password: doctorData.password, // Include password for user registration
+        // Doctor-specific fields passed to userService for doctor record creation
         practiceId: doctorData.practiceId,
-        specialization: doctorData.specialty,
+        specialty: doctorData.specialty,
         bio: doctorData.bio,
+        qualifications: doctorData.qualifications,
+        hpcsa: doctorData.hpcsa,
         experience: doctorData.experience,
+        languages: doctorData.languages,
+        telehealth: doctorData.telehealth,
+        status: 'pending', // Explicitly set status to pending
+        profilePicUrl: doctorData.profilePhoto || null,
       };
 
       const newDoctor = await userService.registerDoctorWithoutPassword(userData);
 
-      // Return the doctor data with additional fields
+      // The newDoctor object returned from userService.registerDoctorWithoutPassword
+      // should already contain all the necessary doctor fields including status.
       return {
         ...newDoctor,
-        specialty: doctorData.specialty,
-        qualifications: doctorData.qualifications,
-        hpcsa: doctorData.hpcsa,
-        languages: doctorData.languages,
-        telehealth: doctorData.telehealth,
         role: "doctor",
       };
     } catch (error) {

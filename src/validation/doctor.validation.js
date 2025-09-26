@@ -87,7 +87,7 @@ const doctorIdSchema = Joi.object({
 const getAllDoctorsSchema = Joi.object({
   page: Joi.number().integer().min(1).default(1),
   limit: Joi.number().integer().min(1).max(100).default(10),
-  search: Joi.string().trim().max(100).optional(),
+  search: Joi.string().trim().max(100).optional().allow(''),
   specialty: Joi.string().trim().min(2).max(100).optional(),
   telehealth: Joi.boolean().optional(),
 }).messages(customMessages);

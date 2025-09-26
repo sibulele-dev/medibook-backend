@@ -6,7 +6,7 @@ class DoctorController {
   async getAllDoctors(req, res) {
     try {
       const doctors = await doctorService.getAllDoctors(req.query);
-      res.status(200).json({ success: true, doctors: doctors });
+      res.status(200).json({ success: true, ...doctors });
     } catch (error) {
       res.status(500).json({
         success: false,

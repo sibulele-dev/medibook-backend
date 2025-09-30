@@ -10,7 +10,7 @@ class EmailService {
         to: userEmail,
         subject: "MediBook Onboarding Acknowledgment",
         html: htmlContent,
-        text: `Welcome to MediBook, ${doctorName}! Thank you for signing up. We have received your application and it is currently under review. We will verify your details and send you another email once your account has been approved and activated. In the meantime, if you have any questions, please don't hesitate to contact our support team. Best regards, The MediBook Team`,
+        text: `Welcome to MediBook, ${doctorName}! Thank you for signing up. We have received your application and it is currently under review. We will verify your details and get back to you within 24 hours. In the meantime, if you have any questions, please don't hesitate to contact our support team. Best regards, The MediBook Team`,
       });
 
       return result;

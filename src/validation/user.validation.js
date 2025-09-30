@@ -48,9 +48,9 @@ const nameSchema = Joi.string()
 
 // Phone number validation schema
 const phoneSchema = Joi.string()
-  .pattern(/^[\+]?[1-9][\d]{0,15}$/)
+  .pattern(/^(?:\+27|0)[6-8][0-9]{8}$/)
   .messages({
-    'string.pattern.base': 'Phone number must be a valid international format'
+    'string.pattern.base': 'Phone number must be a valid South African format'
   })
   .optional();
 
@@ -126,8 +126,8 @@ const doctorRegistrationSchema = Joi.object({
   firstName: nameSchema.label('First name'),
   lastName: nameSchema.label('Last name'),
   password: passwordSchema.optional(), // Optional for admin-created doctors
-  phoneNumber: phoneSchema.label('Phone number'),
-  specialization: Joi.string()
+  phone: phoneSchema.label('Phone number'),
+  specialty: Joi.string()
     .trim()
     .min(2)
     .max(100)

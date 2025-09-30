@@ -403,7 +403,7 @@ class UserService {
       ...validatedData,
       email: normalizedEmail,
       passwordHash: validatedData.password ? await hashPassword(validatedData.password) : null, // Hash password if provided
-      role: "doctor",
+      role: "doctor", // Explicitly set role to doctor
       isActive: true,
       emailVerified: false, // Will be verified when they set password
       lastLoggedInAt: new Date().toISOString(),

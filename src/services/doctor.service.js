@@ -30,7 +30,7 @@ function validateDoctorData(data) {
   if (!data.firstName || typeof data.firstName !== 'string') errors.push('First name is required');
   if (!data.lastName || typeof data.lastName !== 'string') errors.push('Last name is required');
   if (!data.specialty || typeof data.specialty !== 'string') errors.push('Specialty is required');
-  if (!data.phoneNumber || typeof data.phoneNumber !== 'string') errors.push('Phone number is required');
+  if (!data.phone || typeof data.phone !== 'string') errors.push('Phone number is required');
   return errors;
 }
 

@@ -1,5 +1,5 @@
 const { sendEmail, emailTemplates } = require("../config/email");
-const onboardingAcknowledgementEmail = require("../templates/onboardingAcknowledgement");
+const onboardingAcknowledgementEmail = require("../Templates/onboardingAcknowledgement");
 
 class EmailService {
   // Send onboarding acknowledgment email

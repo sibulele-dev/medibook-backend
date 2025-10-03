@@ -72,21 +72,21 @@ const emailTemplates = {
   
   // Welcome email for doctors (EJS)
   welcomeDoctor: async (userName, accountLink) => ({
-    subject: "Welcome to Medibook!",
+    subject: "Welcome to medisync!",
     html: await renderTemplate("welcome-doctor.ejs", { userName, accountLink }),
-    text: `Welcome to Medibook, Dr. ${userName}! Thank you for joining our community.`
+    text: `Welcome to medisync, Dr. ${userName}! Thank you for joining our community.`
   }),
 
   // Welcome email for admins (EJS)
   welcomeAdmin: async (userName) => ({
-    subject: "Welcome to Medibook (Admin)",
+    subject: "Welcome to medisync (Admin)",
     html: await renderTemplate("welcome-admin.ejs", { userName }),
-    text: `Welcome to Medibook, ${userName}! You now have admin access.`
+    text: `Welcome to medisync, ${userName}! You now have admin access.`
   }),
 
   // Password reset email template
   passwordReset: (resetToken, userName) => ({
-    subject: "Password Reset Request - Medibook",
+    subject: "Password Reset Request - medisync",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #dc2626;">Password Reset Request</h2>
@@ -95,7 +95,7 @@ const emailTemplates = {
         <p><a href="${process.env.FRONTEND_URL}/reset-password?token=${resetToken}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px;">Reset Password</a></p>
         <p>If you didn't request this, please ignore this email.</p>
         <p>This link will expire in 1 hour.</p>
-        <p>Best regards,<br>The Medibook Team</p>
+        <p>Best regards,<br>The medisync Team</p>
       </div>
     `,
     text: `Password Reset Request - Hello ${userName}, You have requested to reset your password. Visit ${process.env.FRONTEND_URL}/reset-password?token=${resetToken} to reset your password.`,
@@ -103,7 +103,7 @@ const emailTemplates = {
 
   // Email verification template
   emailVerification: (verificationToken, userName) => ({
-    subject: "Verify Your Email - Medibook",
+    subject: "Verify Your Email - medisync",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #059669;">Verify Your Email</h2>
@@ -112,7 +112,7 @@ const emailTemplates = {
         <p><a href="${process.env.FRONTEND_URL}/auth/verify-email?token=${verificationToken}" style="background-color: #059669; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px;">Verify Email</a></p>
         <p>If you didn't create an account, please ignore this email.</p>
         <p>This link will expire in 24 hours.</p>
-        <p>Best regards,<br>The Medibook Team</p>
+        <p>Best regards,<br>The medisync Team</p>
       </div>
     `,
     text: `Verify Your Email - Hello ${userName}, Please verify your email address by visiting ${process.env.FRONTEND_URL}/auth/verify-email?token=${verificationToken}`,
@@ -120,7 +120,7 @@ const emailTemplates = {
 
   // Session security alert template
   sessionSecurityAlert: (userName, deviceInfo) => ({
-    subject: "Security Alert - New Login Detected - Medibook",
+    subject: "Security Alert - New Login Detected - medisync",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #dc2626;">Security Alert</h2>
@@ -134,7 +134,7 @@ const emailTemplates = {
         </ul>
         <p>If this was you, you can safely ignore this email.</p>
         <p>If you don't recognize this login, please change your password immediately and contact support.</p>
-        <p>Best regards,<br>The Medibook Security Team</p>
+        <p>Best regards,<br>The medisync Security Team</p>
       </div>
     `,
     text: `Security Alert - Hello ${userName}, We detected a new login to your account. If this wasn't you, please change your password immediately.`,
@@ -142,21 +142,21 @@ const emailTemplates = {
 
   // Account verification template (for team members and doctors)
   accountVerification: (verificationToken, userName, role = "team member") => ({
-    subject: "Welcome to Medibook - Verify Your Account",
+    subject: "Welcome to medisync - Verify Your Account",
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #059669;">Welcome to Medibook!</h2>
+        <h2 style="color: #059669;">Welcome to medisync!</h2>
         <p>Hello ${userName},</p>
         <p>Your account has been created by an administrator. To complete your account setup, 
         please verify your email address and set your password by clicking the button below:</p>
         <p><a href="${process.env.FRONTEND_URL}/auth/set-initial-password?token=${verificationToken}" style="background-color: #059669; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px;">Verify Account & Set Password</a></p>
-        <p>After verification, you'll be able to log in to your Medibook account.</p>
+        <p>After verification, you'll be able to log in to your medisync account.</p>
         <p>If you didn't expect this email, please contact your administrator.</p>
         <p>This link will expire in 24 hours.</p>
-        <p>Best regards,<br>The Medibook Team</p>
+        <p>Best regards,<br>The medisync Team</p>
       </div>
     `,
-    text: `Welcome to Medibook! Hello ${userName}, Your account has been created. Please verify your account by visiting ${process.env.FRONTEND_URL}/auth/set-initial-password?token=${verificationToken}`,
+    text: `Welcome to medisync! Hello ${userName}, Your account has been created. Please verify your account by visiting ${process.env.FRONTEND_URL}/auth/set-initial-password?token=${verificationToken}`,
   }),
 };
 

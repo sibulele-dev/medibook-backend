@@ -8,9 +8,9 @@ class EmailService {
       const htmlContent = onboardingAcknowledgementEmail(doctorName);
       const result = await sendEmail({
         to: userEmail,
-        subject: "MediBook Onboarding Acknowledgment",
+        subject: "medisync Onboarding Acknowledgment",
         html: htmlContent,
-        text: `Welcome to MediBook, ${doctorName}! Thank you for signing up. We have received your application and it is currently under review. We will verify your details and get back to you within 24 hours. In the meantime, if you have any questions, please don't hesitate to contact our support team. Best regards, The MediBook Team`,
+        text: `Welcome to medisync, ${doctorName}! Thank you for signing up. We have received your application and it is currently under review. We will verify your details and get back to you within 24 hours. In the meantime, if you have any questions, please don't hesitate to contact our support team. Best regards, The medisync Team`,
       });
 
       return result;

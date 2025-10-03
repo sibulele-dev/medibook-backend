@@ -17,8 +17,8 @@ const createUser = (userData) => {
   return {
     ...userData,
     id: nanoid(25),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
   };
 };
 
@@ -27,8 +27,8 @@ const createAdminData = (adminData) => {
   return {
     ...adminData,
     id: adminData.userId, // Admin ID should match user ID
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
   };
 };
 
@@ -36,8 +36,8 @@ const createAdminData = (adminData) => {
 const createDoctorData = (doctorData) => {
   return {
     ...doctorData,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
   };
 };
 

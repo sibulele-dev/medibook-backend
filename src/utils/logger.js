@@ -91,7 +91,7 @@ const authLogger = {
       email,
       ip,
       success,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date(),
       ...(error && { error: error.message })
     };
     
@@ -108,7 +108,7 @@ const authLogger = {
       userId,
       ip,
       success,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date(),
       ...(error && { error: error.message })
     };
     
@@ -124,7 +124,7 @@ const authLogger = {
       event: 'logout',
       userId,
       ip,
-      timestamp: new Date().toISOString()
+      timestamp: new Date()
     };
     
     logger.info('User logout', logData);
@@ -136,7 +136,7 @@ const authLogger = {
       userId,
       sessionId,
       ip,
-      timestamp: new Date().toISOString()
+      timestamp: new Date()
     };
     
     logger.info('Session created', logData);
@@ -148,7 +148,7 @@ const authLogger = {
       userId,
       sessionId,
       ip,
-      timestamp: new Date().toISOString()
+      timestamp: new Date()
     };
     
     logger.info('Session revoked', logData);
@@ -160,7 +160,7 @@ const authLogger = {
       ip,
       endpoint,
       attempts,
-      timestamp: new Date().toISOString()
+      timestamp: new Date()
     };
     
     logger.warn('Rate limit exceeded', logData);
@@ -171,7 +171,7 @@ const authLogger = {
       event: 'security_event',
       securityEvent: event,
       ...details,
-      timestamp: new Date().toISOString()
+      timestamp: new Date()
     };
     
     logger.warn('Security event detected', logData);
@@ -181,7 +181,7 @@ const authLogger = {
     const logData = {
       event: 'security_event',
       eventType,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date(),
       ...details
     };
     
@@ -199,7 +199,7 @@ const performanceLogger = {
       duration: `${duration}ms`,
       statusCode,
       userId,
-      timestamp: new Date().toISOString()
+      timestamp: new Date()
     };
     
     if (duration > 1000) {
@@ -215,7 +215,7 @@ const performanceLogger = {
       query: query.substring(0, 100) + '...', // Truncate long queries
       duration: `${duration}ms`,
       success,
-      timestamp: new Date().toISOString()
+      timestamp: new Date()
     };
     
     if (duration > 500) {
@@ -234,7 +234,7 @@ const errorLogger = {
       error: error.message,
       stack: error.stack,
       ...context,
-      timestamp: new Date().toISOString()
+      timestamp: new Date()
     };
     
     logger.error('Authentication error', logData);
@@ -246,7 +246,7 @@ const errorLogger = {
       error: error.message,
       stack: error.stack,
       ...context,
-      timestamp: new Date().toISOString()
+      timestamp: new Date()
     };
     
     logger.error('Authorization error', logData);
@@ -257,7 +257,7 @@ const errorLogger = {
       event: 'validation_error',
       error: error.message,
       ...context,
-      timestamp: new Date().toISOString()
+      timestamp: new Date()
     };
     
     logger.warn('Validation error', logData);
@@ -269,7 +269,7 @@ const errorLogger = {
       error: error.message,
       stack: error.stack,
       ...context,
-      timestamp: new Date().toISOString()
+      timestamp: new Date()
     };
     
     logger.error('System error', logData);

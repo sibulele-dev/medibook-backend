@@ -45,15 +45,15 @@ const createPracticeData = (practiceData) => {
     practiceContact: practiceData.practiceContact || null,
     practiceNumber: practiceData.practiceNumber || `PRAC-${nanoid(8)}`, // Generate if not provided
     status: practiceData.status || "active",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
   };
 };
 
 // Helper function to update practice data
 const updatePracticeData = (practiceData) => {
   const updateData = {
-    updatedAt: new Date().toISOString(),
+    updatedAt: new Date(),
   };
 
   if (practiceData.name !== undefined) updateData.name = practiceData.name;

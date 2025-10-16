@@ -52,8 +52,8 @@ class AppointmentService {
       const newAppointment = {
         id: nanoid(25),
         ...appointmentData,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
       const result = await db.insert(appointments).values(newAppointment).returning();
       return result[0];
@@ -67,7 +67,7 @@ class AppointmentService {
     try {
       const updatedAppointment = {
         ...updateData,
-        updatedAt: new Date().toISOString(),
+        updatedAt: new Date(),
       };
       const result = await db.update(appointments).set(updatedAppointment).where(eq(appointments.id, id)).returning();
       return result[0];

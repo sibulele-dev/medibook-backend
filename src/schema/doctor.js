@@ -19,7 +19,7 @@ const doctorStatusEnum = {
 
 const doctors = pgTable("doctors", {
   id: text("id").primaryKey().notNull().$defaultFn(() => nanoid(25)).references(() => users.id),
-  practiceId: text("practice_id").notNull().references(() => practices.id),
+  practiceId: text("practice_id").references(() => practices.id),
   specialty: text("specialty").notNull(),
   bio: text("bio"),
   qualifications: text("qualifications"),

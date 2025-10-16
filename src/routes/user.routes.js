@@ -72,6 +72,7 @@ router.post("/register-doctor", requirePermission('create_users'), validateDocto
 // Session Management (Admin only)
 router.get("/sessions", requirePermission('manage_sessions'), userController.getAllSessions);
 router.delete("/sessions/:token", requirePermission('manage_sessions'), userController.revokeUserSession);
+router.post("/sessions/revoke-all-others", authMiddleware, userController.revokeAllOtherSessions);
 
 // Admin Dashboard and Activity Logs
 router.get("/admin/dashboard", requireRole('admin'), userController.getAdminDashboard);

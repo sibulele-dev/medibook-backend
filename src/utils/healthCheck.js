@@ -70,7 +70,7 @@ class HealthCheck {
           external: Math.round(process.memoryUsage().external / 1024 / 1024),
         },
       },
-      lastUpdated: new Date().toISOString(),
+      lastUpdated: new Date(),
       responseTime: Date.now() - start,
     };
 

@@ -11,6 +11,7 @@ const { authLogger, errorLogger } = require('../utils/logger');
 const { authMetrics, errorMetrics, sessionMetrics } = require('../utils/metrics');
 const permissionService = require('../services/permission.service');
 const adminActivityService = require('../services/admin-activity.service');
+const { addActiveUser, removeActiveUser, countActiveUsers } = require('../utils/jwt');
 
 class UserController {
   // Register a new user - now with proper validation
@@ -263,10 +264,11 @@ class UserController {
 
       const { email, password } = UserValidation.getValidatedData(validationResult);
       const clientIP = req.ip || req.connection.remoteAddress;
+      const userAgent = req.get('User-Agent') || ''; // Also pass userAgent
 
       console.log(`Login attempt from IP: ${clientIP}, Email: ${email}`);
 
-      const { token, refreshToken, user } = await userService.loginUser(email, password);
+      const { token, refreshToken, user } = await userService.loginUser(email, password, clientIP, userAgent);
 
       // Reset rate limit on successful login
       const { resetRateLimit } = require('../middleware/rateLimit.middleware');
@@ -274,11 +276,22 @@ class UserController {
 
       // Track user session
       const { trackUserSession } = require('../utils/jwt');
-      const userAgent = req.get('User-Agent') || '';
-      const sessionId = await trackUserSession(user.id, clientIP, userAgent, {
-        loginTime: new Date().toISOString(),
-        role: user.role
-      });
+      const jwt = require('jsonwebtoken');
+      const decodedRefreshToken = jwt.decode(refreshToken);
+      const refreshTokenJti = decodedRefreshToken.jti;
+      const refreshTokenExpiresAt = new Date(decodedRefreshToken.exp * 1000);
+
+      const sessionId = await trackUserSession(
+        user.id,
+        clientIP,
+        userAgent,
+        refreshTokenJti,
+        refreshTokenExpiresAt,
+        {
+          loginTime: new Date(),
+          role: user.role,
+        },
+      );
 
       // Log successful login
       authLogger.loginAttempt(email, clientIP, true);
@@ -287,6 +300,8 @@ class UserController {
       sessionMetrics.sessionCreated();
 
       console.log(`Successful login for user: ${user.email}, Role: ${user.role}, IP: ${clientIP}, Session: ${sessionId}`);
+
+      await addActiveUser(user.id);
 
       res.cookie('refreshToken', refreshToken, {
         httpOnly: true,
@@ -966,6 +981,7 @@ class UserController {
           // Revoke all user sessions if this is a full logout
           const { revokeAllUserSessions } = require('../utils/jwt');
           await revokeAllUserSessions(payload.id);
+          await removeActiveUser(payload.id);
           
           console.log(`User ${payload.id} logged out from IP: ${clientIP}`);
           
@@ -1036,10 +1052,10 @@ class UserController {
     }
 
     try {
-      // Check Redis connection and get logged in users
+      // Check Redis connection
       await redisClient.ping();
       redisStatus = 'connected';
-      loggedInUsers = -1; // DBSIZE not supported in this configuration
+      loggedInUsers = await countActiveUsers(); // Get actual count of logged-in users
     } catch (redisError) {
       console.error('Redis connection check failed:', redisError.message);
       redisStatus = 'disconnected';
@@ -1063,7 +1079,7 @@ class UserController {
     try {
       const status = {
         status: 'operational',
-        timestamp: new Date().toISOString(),
+        timestamp: new Date(),
         version: '1.0.0',
         environment: process.env.NODE_ENV || 'development',
         services: {
@@ -1148,6 +1164,25 @@ class UserController {
         success: false,
         message: error.message || 'Internal server error',
       });
+    }
+  }
+
+  // Revoke all other sessions for the current user
+  async revokeAllOtherSessions(req, res) {
+    try {
+      const userId = req.user.id; // Assuming req.user is populated by authMiddleware
+      const currentSessionToken = req.headers.authorization?.split(' ')[1]; // Get current session token
+
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+      }
+
+      await userService.revokeAllOtherSessions(userId, currentSessionToken);
+
+      res.status(200).json({ success: true, message: 'All other sessions revoked successfully' });
+    } catch (error) {
+      console.error('Revoke all other sessions error:', error);
+      res.status(500).json({ success: false, message: error.message || 'Internal server error' });
     }
   }
 

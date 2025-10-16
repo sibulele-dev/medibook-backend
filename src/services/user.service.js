@@ -212,7 +212,7 @@ class UserService {
       role: "admin",
       isActive: true,
       emailVerified: false,
-      lastLoggedInAt: new Date().toISOString(),
+      lastLoggedInAt: new Date(),
     });
 
     const transaction = await db.transaction(async (tx) => {
@@ -257,7 +257,7 @@ class UserService {
     // Check if user already exists
     const existingUser = await db
       .select()
-      .from(users)
+      from(users)
       .where(eq(users.email, normalizedEmail));
 
     if (existingUser.length > 0) {
@@ -285,7 +285,7 @@ class UserService {
       role: "admin",
       isActive: true,
       emailVerified: false, // Will be verified when they set password
-      lastLoggedInAt: new Date().toISOString(),
+      lastLoggedInAt: new Date(),
     });
 
     const transaction = await db.transaction(async (tx) => {
@@ -349,7 +349,7 @@ class UserService {
       role: "doctor",
       isActive: true,
       emailVerified: false,
-      lastLoggedInAt: new Date().toISOString(),
+      lastLoggedInAt: new Date(),
     });
 
     const transaction = await db.transaction(async (tx) => {
@@ -406,7 +406,7 @@ class UserService {
       role: "doctor", // Explicitly set role to doctor
       isActive: true,
       emailVerified: false, // Will be verified when they set password
-      lastLoggedInAt: new Date().toISOString(),
+      lastLoggedInAt: new Date(),
     });
 
     const transaction = await db.transaction(async (tx) => {
@@ -462,7 +462,7 @@ class UserService {
     }
   }
 
-  async loginUser(email, password) {
+  async loginUser(email, password, clientIP, userAgent) {
     // Validate login input using Joi
     const validation = this.validateLoginInput({ email, password });
     if (!validation.isValid) {
@@ -525,13 +525,25 @@ class UserService {
     const { passwordHash, departmentName, ...userWithoutSensitive } = processedUser;
 
     // Generate both access and refresh tokens
-    const { generateAccessToken, generateRefreshToken, deleteAllRefreshTokensForUser } = require("../utils/jwt");
+    const { generateAccessToken, generateRefreshToken, deleteAllRefreshTokensForUser, trackUserSession } = require("../utils/jwt");
 
     // Invalidate all existing refresh tokens for this user
     await deleteAllRefreshTokensForUser(userWithoutSensitive.id);
 
     const accessToken = generateAccessToken(userWithoutSensitive);
-    const refreshToken = await generateRefreshToken(userWithoutSensitive);
+    const { refreshToken, jti } = await generateRefreshToken(userWithoutSensitive);
+
+    // Decode accessToken to get expiresAt
+    console.log('Debugging accessToken:', accessToken);
+    const decodedAccessToken = jwt.decode(accessToken);
+    console.log('Debugging decodedAccessToken:', decodedAccessToken);
+    if (!decodedAccessToken || !decodedAccessToken.exp) {
+      throw new Error("Invalid access token format or missing expiration");
+    }
+    const accessTokenExpiresAt = new Date(decodedAccessToken.exp * 1000);
+
+    // Track user session with refresh token jti and access token expiry
+    await trackUserSession(userWithoutSensitive.id, clientIP, userAgent, jti, accessTokenExpiresAt);
 
     return {
       token: accessToken,
@@ -648,7 +660,7 @@ class UserService {
       }
 
       // Add updated timestamp
-      validatedData.updatedAt = new Date().toISOString();
+      validatedData.updatedAt = new Date();
 
       const [updatedUser] = await db
         .update(users)
@@ -685,7 +697,7 @@ class UserService {
         .set({
           isActive: false,
           status: "deleted",
-          updatedAt: new Date().toISOString(),
+          updatedAt: new Date(),
         })
         .where(eq(users.id, validatedData.userId))
         .returning();
@@ -834,7 +846,7 @@ class UserService {
         .set({
           isActive: newStatus,
           status: statusText,
-          updatedAt: new Date().toISOString(),
+          updatedAt: new Date(),
         })
         .where(eq(users.id, validatedData.userId))
         .returning();
@@ -887,7 +899,7 @@ class UserService {
         .set({
           passwordHash: passwordHash,
           emailVerified: true,
-          updatedAt: new Date().toISOString(),
+          updatedAt: new Date(),
         })
         .where(eq(users.id, userId))
         .returning();
@@ -1059,7 +1071,7 @@ class UserService {
       await db.insert(passwordHistory).values({
         userId: validatedData.id,
         passwordHash: passwordHash,
-        createdAt: new Date().toISOString(),
+        createdAt: new Date(),
       });
     } catch (error) {
       console.error("Error storing password in history:", error);
@@ -1096,7 +1108,7 @@ class UserService {
         .update(users)
         .set({
           passwordHash: passwordHash,
-          updatedAt: new Date().toISOString(),
+          updatedAt: new Date(),
         })
         .where(eq(users.id, validatedUserId))
         .returning();
@@ -1161,8 +1173,8 @@ class UserService {
         .values({
           id: validatedData.id,
           departmentId: departmentId,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
         })
         .returning();
 
@@ -1180,53 +1192,75 @@ class UserService {
     const redisClient = require("../utils/redis");
     const jwt = require("jsonwebtoken");
 
-    const sessionKeys = await redisClient.keys('user:*:refreshToken:*');
-    const sessions = [];
+    const allSessions = [];
     const sessionsByUser = {};
 
-    for (const key of sessionKeys) {
-      const userId = key.split(':')[1]; // Extract userId from key
-      const refreshToken = key.split(':')[3]; // Extract refreshToken from key
+    try {
+      const activeUserIds = await redisClient.smembers('active_users');
 
-      try {
-        const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-        const user = await this.getUserById(userId);
+      for (const userId of activeUserIds) {
+        const userSessionsKey = `user:${userId}:sessions`;
+        const sessionIds = await redisClient.smembers(userSessionsKey);
 
-        if (user) {
-          const session = {
-            token: refreshToken,
-            userId: user.id,
-            email: user.email,
-            name: `${user.firstName} ${user.lastName}`.trim(),
-            role: user.role,
-            issuedAt: new Date(decoded.iat * 1000).toISOString(),
-            expiresAt: new Date(decoded.exp * 1000).toISOString(),
-          };
-          sessions.push(session);
+        for (const sessionId of sessionIds) {
+          const sessionKey = `session:${sessionId}`;
+          const sessionData = await redisClient.hgetall(sessionKey);
 
-          if (!sessionsByUser[user.id]) {
-            sessionsByUser[user.id] = {
-              user: {
-                id: user.id,
+          if (sessionData && sessionData.userId) {
+            const user = await this.getUserById(sessionData.userId);
+            if (user) {
+              // Determine device type from user agent
+              let deviceType = 'desktop';
+              if (sessionData.userAgent?.includes('Mobile')) {
+                deviceType = 'mobile';
+              } else if (sessionData.userAgent?.includes('Tablet')) {
+                deviceType = 'tablet';
+              }
+
+              // Determine if current session (this is a placeholder, actual current session detection needs client-side info)
+              const isCurrent = false; // Placeholder, will be determined by frontend
+
+              const session = {
+                token: sessionData.refreshTokenJti, // Use refreshTokenJti as the token for display/revocation
+                userId: user.id,
                 email: user.email,
                 name: `${user.firstName} ${user.lastName}`.trim(),
                 role: user.role,
-              },
-              count: 0,
-              sessions: [],
-            };
+                issuedAt: new Date(parseInt(sessionData.createdAt)),
+                expiresAt: new Date(parseInt(sessionData.expiresAt)), 
+                device: sessionData.userAgent || 'Unknown Device',
+                deviceType: deviceType,
+                location: sessionData.ip || 'Unknown Location',
+                ip: sessionData.ip || 'N/A',
+                lastActive: new Date(parseInt(sessionData.lastActivity)), // Return as Date object
+                current: isCurrent,
+              };
+              allSessions.push(session);
+
+              if (!sessionsByUser[user.id]) {
+                sessionsByUser[user.id] = {
+                  user: {
+                    id: user.id,
+                    email: user.email,
+                    name: `${user.firstName} ${user.lastName}`.trim(),
+                    role: user.role,
+                  },
+                  count: 0,
+                  sessions: [],
+                };
+              }
+              sessionsByUser[user.id].count++;
+              sessionsByUser[user.id].sessions.push(session);
+            }
           }
-          sessionsByUser[user.id].count++;
-          sessionsByUser[user.id].sessions.push(session);
         }
-      } catch (error) {
-        console.warn(`Invalid or expired refresh token found in Redis: ${key}`, error.message);
-        // Optionally delete invalid token
-        await redisClient.del(key);
       }
+    } catch (error) {
+      console.error("Error getting all active sessions:", error);
     }
+
     return {
-      allSessions: sessions,
+      allSessions: allSessions,
       sessionsByUser: Object.values(sessionsByUser),
     };
   }
@@ -1234,18 +1268,64 @@ class UserService {
   async revokeSession(token) {
     const redisClient = require("../utils/redis");
     const jwt = require("jsonwebtoken");
+    const { revokeSession: revokeSessionFromJwt } = require("../utils/jwt");
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_REFRESH_SECRET);
       const userId = decoded.id;
+      const jti = decoded.jti;
 
-      // Delete the specific token
-      await redisClient.del(`user:${userId}:refreshToken:${token}`);
+      // Delete the specific refresh token JTI from Redis
+      await redisClient.del(jti);
+      // Remove from user's JTI set
+      await redisClient.srem(`user:${userId}:jtis`, jti);
+
+      // Find and revoke the associated session
+      const userSessionsKey = `user:${userId}:sessions`;
+      const sessionIds = await redisClient.smembers(userSessionsKey);
+
+      for (const sessionId of sessionIds) {
+        const sessionKey = `session:${sessionId}`;
+        const sessionData = await redisClient.hgetall(sessionKey);
+        if (sessionData && sessionData.refreshTokenJti === jti) {
+          await revokeSessionFromJwt(sessionId);
+          break; // Found and revoked the session, no need to continue
+        }
+      }
 
       return { success: true, message: "Session revoked successfully" };
     } catch (error) {
       console.error("Error revoking session:", error);
       throw new Error("Failed to revoke session: " + error.message);
+    }
+  }
+
+  async revokeSessionById(sessionId) {
+    const { revokeSession: revokeSessionFromJwt } = require("../utils/jwt");
+    await revokeSessionFromJwt(sessionId);
+  }
+
+  async revokeAllOtherSessions(userId, currentSessionToken) {
+    const redisClient = require("../utils/redis");
+    const jwt = require("jsonwebtoken");
+    const { revokeSession: revokeSessionFromJwt } = require("../utils/jwt");
+
+    try {
+      const userSessionsKey = `user:${userId}:sessions`;
+      const sessionIds = await redisClient.smembers(userSessionsKey);
+
+      for (const sessionId of sessionIds) {
+        const sessionKey = `session:${sessionId}`;
+        const sessionData = await redisClient.hgetall(sessionKey);
+
+        if (sessionData && sessionData.token !== currentSessionToken) {
+          await revokeSessionFromJwt(sessionId); // Use the jwt utility to revoke session
+        }
+      }
+      return { success: true, message: "All other sessions revoked successfully" };
+    } catch (error) {
+      console.error("Error revoking all other sessions:", error);
+      throw new Error("Failed to revoke all other sessions: " + error.message);
     }
   }
 }

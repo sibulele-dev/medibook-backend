@@ -25,10 +25,10 @@ export const users = pgTable("users", {
 	phone: text(),
 	isActive: boolean("is_active").default(true).notNull(),
 	emailVerified: boolean("email_verified").default(false).notNull(),
-	passwordHash: text("password_hash").notNull(),
-	lastLoggedInAt: timestamp("last_logged_in_at", { mode: 'string' }),
-	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull(),
+	passwordHash: text("password_hash"),
+	lastLoggedInAt: timestamp("last_logged_in_at"),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
+	updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
 	unique("users_email_unique").on(table.email),
 ]);
@@ -45,15 +45,15 @@ export const practices = pgTable("practices", {
 	practiceContact: text("practice_contact"),
 	practiceNumber: text("practice_number").notNull(),
 	status: practiceStatus().default('active'),
-	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull(),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
+	updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const admins = pgTable("admins", {
 	id: text().primaryKey().notNull(),
 	departmentId: text("department_id").notNull(),
-	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull(),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
+	updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
 	foreignKey({
 			columns: [table.departmentId],
@@ -75,7 +75,7 @@ export const permissions = pgTable("permissions", {
 
 export const doctors = pgTable("doctors", {
 	id: text().primaryKey().notNull(),
-	practiceId: text("practice_id").notNull(),
+	practiceId: text("practice_id"),
 	specialty: text().notNull(),
 	bio: text(),
 	qualifications: text(),
@@ -86,8 +86,8 @@ export const doctors = pgTable("doctors", {
 	status: text().default('pending').notNull(),
 	profilePicUrl: text("profile_pic_url"),
 	isActive: boolean("is_active").default(true).notNull(),
-	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull(),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
+	updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
 	foreignKey({
 			columns: [table.id],
@@ -110,7 +110,7 @@ export const subscriptionPayments = pgTable("subscription_payments", {
 	paymentStatus: paymentStatus("payment_status"),
 	transactionId: text("transaction_id").notNull(),
 	invoiceUrl: text("invoice_url"),
-	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
 	foreignKey({
 			columns: [table.doctorId],
@@ -129,7 +129,7 @@ export const refunds = pgTable("refunds", {
 	paymentId: text("payment_id").notNull(),
 	refundStatus: refundStatus("refund_status"),
 	refundReason: text("refund_reason"),
-	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
 	foreignKey({
 			columns: [table.paymentId],
@@ -149,8 +149,8 @@ export const appointments = pgTable("appointments", {
 	time: text().notNull(),
 	note: text(),
 	status: text().default('scheduled').notNull(),
-	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull(),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
+	updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
 	foreignKey({
 			columns: [table.doctorId],
@@ -165,11 +165,11 @@ export const subscriptions = pgTable("subscriptions", {
 	planName: text("plan_name").default('Standard').notNull(),
 	amount: integer().default(600).notNull(),
 	status: subscriptionStatus(),
-	startDate: timestamp("start_date", { mode: 'string' }),
-	nextBillingDate: timestamp("next_billing_date", { mode: 'string' }),
-	endDate: timestamp("end_date", { mode: 'string' }),
-	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull(),
+	startDate: timestamp("start_date"),
+	nextBillingDate: timestamp("next_billing_date"),
+	endDate: timestamp("end_date"),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
+	updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
 	foreignKey({
 			columns: [table.doctorId],
@@ -182,7 +182,7 @@ export const passwordHistory = pgTable("password_history", {
 	id: text().primaryKey().notNull(),
 	userId: text("user_id").notNull(),
 	passwordHash: text("password_hash").notNull(),
-	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
 	foreignKey({
 			columns: [table.userId],
@@ -199,8 +199,8 @@ export const payments = pgTable("payments", {
 	status: text().default('pending').notNull(),
 	itemName: text("item_name").notNull(),
 	itemDescription: text("item_description"),
-	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull(),
+	createdAt: timestamp("created_at").defaultNow().notNull(),
+	updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
 	foreignKey({
 			columns: [table.userId],

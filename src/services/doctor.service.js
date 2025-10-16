@@ -3,6 +3,7 @@ const { doctors } = require("../schema/doctor");
 const { users } = require("../schema/user");
 const { practices } = require("../schema/practice");
 const userService = require("../services/user.service");
+const emailService = require("../services/email.service");
 const { eq, and, or, like, asc, sql } = require("drizzle-orm");
 const { nanoid } = require("nanoid");
 
@@ -193,7 +194,7 @@ class DoctorService {
         phone: doctorData.phone,
         password: doctorData.password, // Include password for user registration
         // Doctor-specific fields passed to userService for doctor record creation
-        practiceId: doctorData.practiceId,
+        practiceId: doctorData.practiceId || null,
         specialty: doctorData.specialty,
         bio: doctorData.bio,
         qualifications: doctorData.qualifications,
@@ -233,16 +234,23 @@ class DoctorService {
         languages,
         telehealth,
         practiceId,
+        status,
       } = updateData;
 
-      return await db.transaction(async (tx) => {
+      const currentDoctor = await this.getDoctorById(doctorId);
+      if (!currentDoctor) {
+        throw new Error("Doctor not found");
+      }
+      const oldStatus = currentDoctor.status;
+
+      const updatedDoctor = await db.transaction(async (tx) => {
         // Update user information
         if (firstName || lastName || phoneNumber) {
           const userUpdateData = {};
           if (firstName) userUpdateData.firstName = firstName;
           if (lastName) userUpdateData.lastName = lastName;
           if (phoneNumber) userUpdateData.phone = phoneNumber;
-          userUpdateData.updatedAt = new Date().toISOString();
+          userUpdateData.updatedAt = new Date();
 
           await tx
             .update(users)
@@ -264,7 +272,8 @@ class DoctorService {
         if (languages !== undefined) doctorUpdateData.languages = languages;
         if (telehealth !== undefined) doctorUpdateData.telehealth = telehealth;
         if (practiceId !== undefined) doctorUpdateData.practiceId = practiceId;
-        doctorUpdateData.updatedAt = new Date().toISOString();
+        if (status) doctorUpdateData.status = status;
+        doctorUpdateData.updatedAt = new Date();
 
         await tx
           .update(doctors)
@@ -273,7 +282,19 @@ class DoctorService {
 
         return await this.getDoctorById(doctorId);
       });
+
+      if (oldStatus === 'pending' && status === 'active') {
+        const passwordResetToken = await userService.generatePasswordResetToken(doctorId);
+        await emailService.sendDoctorWelcomeEmail(
+          updatedDoctor.email,
+          updatedDoctor.firstName,
+          passwordResetToken
+        );
+      }
+
+      return updatedDoctor;
     } catch (error) {
+      console.error("Failed to update doctor:", error);
       throw new Error("Failed to update doctor");
     }
   }

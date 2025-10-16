@@ -35,7 +35,7 @@ async function generateRefreshToken(user) {
   // Add the JTI to a set for the user
   await redisClient.sAdd(`user:${user.id}:jtis`, jti);
 
-  return refreshToken;
+  return { refreshToken, jti };
 }
 
 async function deleteAllRefreshTokensForUser(userId) {
@@ -62,7 +62,8 @@ async function deleteAllRefreshTokensForUser(userId) {
 }
 
 // Session management functions
-async function trackUserSession(userId, ip, userAgent, sessionData = {}) {
+async function trackUserSession(userId, ip, userAgent, refreshTokenJti, expiresAt, sessionData = {}) {
+  console.log('Debugging expiresAt in trackUserSession:', expiresAt);
   const sessionId = uuidv4();
   const sessionKey = `session:${sessionId}`;
   
@@ -70,6 +71,8 @@ async function trackUserSession(userId, ip, userAgent, sessionData = {}) {
     userId,
     ip,
     userAgent,
+    refreshTokenJti, // Store refreshTokenJti in session info
+    expiresAt: expiresAt.getTime(), // Store as timestamp
     createdAt: Date.now(),
     lastActivity: Date.now(),
     ...sessionData
@@ -95,11 +98,17 @@ async function revokeSession(sessionId) {
   const sessionData = await redisClient.hgetall(sessionKey);
   
   if (sessionData && sessionData.userId) {
-    // Remove from user's active sessions
+    // If a refresh token JTI is associated, revoke it
+    if (sessionData.refreshTokenJti) {
+      await redisClient.del(sessionData.refreshTokenJti);
+      await redisClient.srem(`user:${sessionData.userId}:jtis`, sessionData.refreshTokenJti);
+    }
+
+    // Remove from user's active sessions set
     await redisClient.srem(`user:${sessionData.userId}:sessions`, sessionId);
   }
   
-  // Delete the session
+  // Delete the session hash
   await redisClient.del(sessionKey);
 }
 
@@ -109,12 +118,20 @@ async function revokeAllUserSessions(userId) {
   
   if (sessions && sessions.length > 0) {
     const pipeline = redisClient.pipeline();
-    sessions.forEach(sessionId => {
-      pipeline.del(`session:${sessionId}`);
-    });
+    for (const sessionId of sessions) {
+      const sessionKey = `session:${sessionId}`;
+      const sessionData = await redisClient.hgetall(sessionKey);
+      if (sessionData && sessionData.refreshTokenJti) {
+        pipeline.del(sessionData.refreshTokenJti); // Delete the refresh token itself
+        pipeline.srem(`user:${userId}:jtis`, sessionData.refreshTokenJti); // Remove from user's JTI set
+      }
+      pipeline.del(sessionKey);
+    }
     pipeline.del(userSessionsKey);
     await pipeline.exec();
   }
+  // Also remove the user from the active_users set
+  await removeActiveUser(userId);
 }
 
 // Token rotation with proper security
@@ -139,6 +156,21 @@ async function rotateRefreshToken(oldJti, userId, fingerprint = null) {
   await redisClient.sadd(`user:${userId}:jtis`, newJti);
   
   return newToken;
+}
+
+// Global active user tracking
+async function addActiveUser(userId) {
+  await redisClient.sadd('active_users', userId.toString());
+}
+
+async function removeActiveUser(userId) {
+  await redisClient.srem('active_users', userId.toString());
+}
+
+async function countActiveUsers() {
+  // SCARD is available for both node-redis and Upstash Redis
+  const count = await redisClient.scard('active_users');
+  return count || 0;
 }
 
 // Enhanced token validation with fingerprint checking
@@ -216,5 +248,8 @@ module.exports = {
   validateTokenFingerprint,
   validateTokensBatch,
   getCachedTokenValidation,
-  setCachedTokenValidation
+  setCachedTokenValidation,
+  addActiveUser,
+  removeActiveUser,
+  countActiveUsers
 };

@@ -60,6 +60,8 @@ if (UPSTASH_REDIS_REST_URL && UPSTASH_REDIS_REST_TOKEN) {
     smembers: async (key) => upstash.smembers(key),
     sRem: async (key, ...members) => upstash.srem(key, ...members.flat()),
     srem: async (key, ...members) => upstash.srem(key, ...members.flat()),
+    // Set cardinality
+    scard: async (key) => upstash.scard(key),
     // Utility
     ping: async () => 'PONG',
     keys: async () => {
@@ -107,6 +109,7 @@ if (UPSTASH_REDIS_REST_URL && UPSTASH_REDIS_REST_TOKEN) {
       sAdd: originalClient.sAdd || originalClient.sadd,
       sMembers: originalClient.sMembers || originalClient.smembers,
       sRem: originalClient.sRem || originalClient.srem,
+      scard: originalClient.scard,
     };
 
   } catch (error) {

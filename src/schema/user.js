@@ -17,7 +17,7 @@ const users = pgTable("users", {
   phone: text("phone"),
   isActive: boolean("is_active").notNull().default(true),
   emailVerified: boolean("email_verified").notNull().default(false),
-  passwordHash: text("password_hash").notNull(),
+  passwordHash: text("password_hash"),
   lastLoggedInAt: timestamp("last_logged_in_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

@@ -1,0 +1,1 @@
+ALTER TABLE "doctors" ALTER COLUMN "practice_id" DROP NOT NULL;

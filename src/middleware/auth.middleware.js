@@ -2,6 +2,12 @@ const jwt = require('jsonwebtoken');
 const userService = require('../services/user.service');
 
 async function authMiddleware(req, res, next) {
+  // Temporarily disable authentication for development
+  // console.warn('Authentication is temporarily disabled. DO NOT USE IN PRODUCTION!');
+  // req.user = { id: 'dev_user_id', role: 'admin', email: 'dev@example.com' }; // Mock user for testing
+  // next();
+  // return;
+
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {

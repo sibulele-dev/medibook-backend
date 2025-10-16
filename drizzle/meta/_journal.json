@@ -15,6 +15,20 @@
       "when": 1758448861403,
       "tag": "0001_swift_bill_hollister",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1759835909097,
+      "tag": "0002_foamy_the_twelve",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1759849706446,
+      "tag": "0003_perfect_starbolt",
+      "breakpoints": true
     }
   ]
 }

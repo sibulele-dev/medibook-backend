@@ -64,6 +64,37 @@ class SubscriptionService {
       throw new Error("Failed to fetch subscriptions");
     }
   }
+
+  async createSubscription(subscriptionDetails) {
+    const [newSubscription] = await db
+      .insert(subscriptions)
+      .values(subscriptionDetails)
+      .returning();
+    return newSubscription;
+  }
+
+  async getSubscriptionByDoctorId(doctorId) {
+    try {
+      const subscription = await db.query.subscriptions.findFirst({
+        where: eq(subscriptions.doctorId, doctorId),
+        orderBy: [desc(subscriptions.createdAt)],
+      });
+      return subscription;
+    } catch (error) {
+      console.error("Get subscription by doctor ID error:", error);
+      throw new Error("Failed to fetch subscription");
+    }
+  async updateSubscriptionStatus(subscriptionId, status) {
+    try {
+      await db
+        .update(subscriptions)
+        .set({ status, updatedAt: new Date() })
+        .where(eq(subscriptions.id, subscriptionId));
+    } catch (error) {
+      console.error("Update subscription status error:", error);
+      throw new Error("Failed to update subscription status");
+    }
+  }
 }
 
 module.exports = new SubscriptionService();

@@ -42,6 +42,8 @@ const generatePaymentIdentifier = async (payload, config) => {
   }
 };
 
+const subscriptionService = require('./subscription.service');
+
 class PaymentService {
   async initiatePayment(paymentDetails) {
     const paymentData = {
@@ -141,6 +143,10 @@ class PaymentService {
       console.log(
         `Payment ${m_payment_id} status updated to ${payment_status}`
       );
+
+      if (payment_status.toLowerCase() === 'complete') {
+        await subscriptionService.updateSubscriptionStatus(m_payment_id, 'active');
+      }
     } catch (error) {
       console.error('Error updating payment status:', error);
     }

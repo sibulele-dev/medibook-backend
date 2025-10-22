@@ -1,5 +1,6 @@
 const paymentService = require('../services/payment.service');
 const paymentConfig = require('../config/payment');
+const subscriptionService = require('../services/subscription.service');
 
 class PaymentController {
   async initiatePayment(req, res) {
@@ -52,8 +53,15 @@ class PaymentController {
   }
 
   async cancelPayment(req, res) {
-    // Redirect user to the frontend cancel page
-    res.redirect(paymentConfig.cancelUrl);
+    const { m_payment_id } = req.query;
+    try {
+      await subscriptionService.updateSubscriptionStatus(m_payment_id, 'cancelled');
+      // Redirect user to the frontend cancel page
+      res.redirect(paymentConfig.cancelUrl);
+    } catch (error) {
+      console.error('Error cancelling payment:', error);
+      res.redirect(paymentConfig.cancelUrl);
+    }
   }
 }
 

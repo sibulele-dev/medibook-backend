@@ -1,21 +1,79 @@
 const { sendEmail, emailTemplates } = require("../config/email");
-const onboardingAcknowledgementEmail = require("../Templates/onboardingAcknowledgement");
+const ejs = require('ejs');
+const path = require('path');
 
 class EmailService {
   // Send onboarding acknowledgment email
   async sendOnboardingAcknowledgementEmail(userEmail, doctorName) {
     try {
-      const htmlContent = onboardingAcknowledgementEmail(doctorName);
+      const templatePath = path.join(__dirname, '../Templates/onboardingAcknowledgement.ejs');
+      const htmlContent = await ejs.renderFile(templatePath, { doctorName });
       const result = await sendEmail({
         to: userEmail,
         subject: "medisync Onboarding Acknowledgment",
         html: htmlContent,
-        text: `Welcome to medisync, ${doctorName}! Thank you for signing up. We have received your application and it is currently under review. We will verify your details and get back to you within 24 hours. In the meantime, if you have any questions, please don't hesitate to contact our support team. Best regards, The medisync Team`,
+        text: `Welcome to medisync, ${doctorName}! Thank you for signing up. We have received your application and it is currently under review. We will verify your details and get back to you within 24-48 hours. In the meantime, if you have any questions, please don't hesitate to contact our support team. Best regards, The medisync Team`,
       });
 
       return result;
     } catch (error) {
       console.error("Error sending onboarding acknowledgment email:", error);
+      throw error;
+    }
+  }
+
+  // Send doctor welcome email when status changes to active
+  async sendDoctorWelcomeEmail(userEmail, userName, passwordResetToken) {
+    try {
+      const appUrl = process.env.APP_URL || 'http://localhost:3000';
+      const accountLink = `${appUrl}/doctor/dashboard`;
+
+      const htmlContent = await ejs.renderFile(
+        path.join(__dirname, '../Templates/welcome-doctor.ejs'),
+        {
+          userName: userName,
+          accountLink: accountLink
+        }
+      );
+
+      const result = await sendEmail({
+        to: userEmail,
+        subject: "Welcome to medisync - Your Account is Active!",
+        html: htmlContent,
+        text: `Welcome to medisync, Dr. ${userName}! Your account has been approved and is now active. You can now access your dashboard and start managing your practice. Visit ${accountLink} to get started.`,
+      });
+
+      return result;
+    } catch (error) {
+      console.error("Error sending doctor welcome email:", error);
+      throw error;
+    }
+  }
+
+  // Send password setup email
+  async sendPasswordSetupEmail(userEmail, userName, passwordResetToken) {
+    try {
+      const appUrl = process.env.APP_URL || 'http://localhost:3000';
+      const setupLink = `${appUrl}/auth/set-initial-password?token=${passwordResetToken}`;
+
+      const htmlContent = await ejs.renderFile(
+        path.join(__dirname, '../Templates/password-setup.ejs'),
+        {
+          userName: userName,
+          setupLink: setupLink
+        }
+      );
+
+      const result = await sendEmail({
+        to: userEmail,
+        subject: "Complete Your medisync Account Setup",
+        html: htmlContent,
+        text: `Welcome to medisync, Dr. ${userName}! To complete your account setup, please create a secure password by visiting: ${setupLink}`,
+      });
+
+      return result;
+    } catch (error) {
+      console.error("Error sending password setup email:", error);
       throw error;
     }
   }

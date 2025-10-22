@@ -95,6 +95,18 @@ class DoctorController {
         req.params.id,
         req.body
       );
+
+      // If admin provided a password field, update the user's password using userService
+      if (req.body && req.body.password) {
+        try {
+          await userService.updateUserPassword(req.params.id, req.body.password);
+        } catch (pwErr) {
+          console.error('Failed to update user password via admin edit:', pwErr);
+          // Do not fail the entire request if password update fails; return info
+          return res.status(200).json({ success: true, data: updatedDoctor, message: 'Doctor updated but failed to update password' });
+        }
+      }
+
       res.status(200).json({ success: true, data: updatedDoctor });
     } catch (error) {
       res.status(500).json({
@@ -115,6 +127,35 @@ class DoctorController {
         success: false,
         message: error.message || "Failed to delete doctor",
       });
+    }
+  }
+
+  async sendPasswordResetEmail(req, res) {
+    try {
+      const doctorId = req.params.id;
+      const doctor = await doctorService.getDoctorById(doctorId);
+      if (!doctor) {
+        return res.status(404).json({ success: false, message: 'Doctor not found' });
+      }
+
+      // generate token and send password setup email
+      const passwordResetToken = userService.generatePasswordResetToken(doctorId);
+      try {
+        await emailService.sendPasswordSetupEmail(
+          doctor.email,
+          doctor.firstName || (doctor.name && doctor.name.split(' ')[0]) || '',
+          passwordResetToken
+        );
+      } catch (emailErr) {
+        console.error('Failed to send password setup email:', emailErr);
+        // respond with 500 but include message
+        return res.status(500).json({ success: false, message: 'Failed to send password setup email' });
+      }
+
+      res.status(200).json({ success: true, message: 'Password setup email sent' });
+    } catch (error) {
+      console.error('sendPasswordResetEmail error:', error);
+      res.status(500).json({ success: false, message: 'Failed to send password reset email' });
     }
   }
 }

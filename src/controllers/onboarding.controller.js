@@ -36,9 +36,15 @@ class OnboardingController {
       });
     } catch (error) {
       console.error('Error during doctor onboarding:', error);
+      // If the error indicates a duplicate email, return 409 Conflict
+      const errMsg = error && error.message ? error.message : String(error);
+      if (typeof errMsg === 'string' && errMsg.toLowerCase().includes('already exists')) {
+        return res.status(409).json({ success: false, message: errMsg });
+      }
+
       res.status(400).json({
         success: false,
-        message: error.message || 'Failed to onboard doctor.',
+        message: errMsg || 'Failed to onboard doctor.',
       });
     }
   }

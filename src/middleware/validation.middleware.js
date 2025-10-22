@@ -16,13 +16,15 @@ const createValidationMiddleware = (validationFunction, source = 'body') => {
     try {
       const dataToValidate = req[source];
       const validationResult = validationFunction(dataToValidate);
-      
-      if (UserValidation.hasValidationError(validationResult)) {
-        const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
+
+      // If Joi returned errors, format and send them
+      if (validationResult && validationResult.error) {
+        const details = validationResult.error.details || [];
+        const errorMessage = details.map(detail => detail.message).join(', ') || 'Validation failed';
         return res.status(400).json({
           success: false,
           message: `Validation failed: ${errorMessage}`,
-          errors: validationResult.error.details.map(detail => ({
+          errors: details.map(detail => ({
             field: detail.path.join('.'),
             message: detail.message,
             value: detail.context?.value
@@ -30,8 +32,8 @@ const createValidationMiddleware = (validationFunction, source = 'body') => {
         });
       }
 
-      // Replace original data with validated/sanitized data
-      req[source] = UserValidation.getValidatedData(validationResult);
+      // Replace original data with validated/sanitized data from Joi
+      req[source] = validationResult && validationResult.value !== undefined ? validationResult.value : dataToValidate;
       next();
     } catch (error) {
       console.error('Validation middleware error:', error);
@@ -193,7 +195,7 @@ const validateDoctorRegistrationConditional = (req, res, next) => {
     // For admin-created doctors, password is optional
     // For self-registration, password is required
     const isAdminCreated = req.user && req.user.role === 'admin';
-    
+
     let validationResult;
     if (isAdminCreated) {
       // Use doctor registration schema without password requirement
@@ -206,7 +208,7 @@ const validateDoctorRegistrationConditional = (req, res, next) => {
         password: req.body.password || undefined // Ensure password validation is triggered
       });
     }
-    
+
     if (UserValidation.hasValidationError(validationResult)) {
       const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
       return res.status(400).json({
@@ -251,7 +253,7 @@ const handleValidationError = (error, req, res, next) => {
 module.exports = {
   // Generic middleware factory
   createValidationMiddleware,
-  
+
   // Specific validation middleware
   validateUserRegistration,
   validateAdminRegistration,
@@ -290,13 +292,13 @@ module.exports = {
     AppointmentValidation.validateDoctorIdParam,
     'params'
   ),
-  
+
   // Combined validation middleware
   validateUserIdAndBody,
-  
+
   // Error handling
   handleValidationError,
-  
+
   // Helper functions for manual validation in controllers
   UserValidation
 };

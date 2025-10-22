@@ -28,9 +28,9 @@ const nameSchema = Joi.string()
 
 // Email validation schema
 const emailSchema = Joi.string()
-  .email({ 
-    minDomainSegments: 2, 
-    tlds: { allow: true } 
+  .email({
+    minDomainSegments: 2,
+    tlds: { allow: true }
   })
   .lowercase()
   .trim()
@@ -47,18 +47,19 @@ const phoneSchema = Joi.string()
   .required();
 
 const doctorSchema = {
-    email: emailSchema,
-    firstName: nameSchema.label('First name'),
-    lastName: nameSchema.label('Last name'),
-    specialty: Joi.string().trim().min(2).max(100).required().label('Specialty'),
-    phoneNumber: phoneSchema.label('Phone number'),
-    practiceId: Joi.string().trim().max(50).optional().allow(null, '').label('Practice ID'),
-    bio: Joi.string().trim().max(1000).optional().allow(null, '').label('Bio'),
-    qualifications: Joi.array().items(Joi.string().trim().max(100)).optional().label('Qualifications'),
-    hpcsa: Joi.string().trim().max(50).optional().allow(null, '').label('HPCSA Number'),
-    experience: Joi.number().integer().min(0).max(60).optional().allow(null).label('Experience'),
-    languages: Joi.array().items(Joi.string().trim().max(50)).optional().label('Languages'),
-    telehealth: Joi.boolean().optional().label('Telehealth'),
+  email: emailSchema,
+  firstName: nameSchema.label('First name'),
+  lastName: nameSchema.label('Last name'),
+  specialty: Joi.string().trim().min(2).max(100).required().label('Specialty'),
+  phoneNumber: phoneSchema.label('Phone number'),
+  practiceId: Joi.string().trim().max(50).optional().allow(null, '').label('Practice ID'),
+  bio: Joi.string().trim().max(1000).optional().allow(null, '').label('Bio'),
+  qualifications: Joi.array().items(Joi.string().trim().max(100)).optional().label('Qualifications'),
+  hpcsa: Joi.string().trim().max(50).optional().allow(null, '').label('HPCSA Number'),
+  experience: Joi.number().integer().min(0).max(60).optional().allow(null).label('Experience'),
+  languages: Joi.array().items(Joi.string().trim().max(50)).optional().label('Languages'),
+  telehealth: Joi.boolean().optional().label('Telehealth'),
+  status: Joi.string().valid('active', 'pending', 'rejected').optional().label('Status'),
 };
 
 // Doctor registration validation schema
@@ -66,10 +67,10 @@ const registerDoctorSchema = Joi.object(doctorSchema).messages(customMessages);
 
 // Doctor update validation schema
 const updateDoctorSchema = Joi.object({
-    ...Object.keys(doctorSchema).reduce((acc, key) => {
-        acc[key] = doctorSchema[key].optional();
-        return acc;
-    }, {}),
+  ...Object.keys(doctorSchema).reduce((acc, key) => {
+    acc[key] = doctorSchema[key].optional();
+    return acc;
+  }, {}),
 }).messages(customMessages);
 
 // Doctor ID parameter validation schema
@@ -95,30 +96,30 @@ const getAllDoctorsSchema = Joi.object({
 // Validation helper class
 class DoctorValidation {
   static validateRegisterDoctor(data) {
-    return registerDoctorSchema.validate(data, { 
+    return registerDoctorSchema.validate(data, {
       abortEarly: false,
-      stripUnknown: true 
+      stripUnknown: true
     });
   }
 
   static validateUpdateDoctor(data) {
-    return updateDoctorSchema.validate(data, { 
+    return updateDoctorSchema.validate(data, {
       abortEarly: false,
-      stripUnknown: true 
+      stripUnknown: true
     });
   }
 
   static validateDoctorId(data) {
-    return doctorIdSchema.validate(data, { 
+    return doctorIdSchema.validate(data, {
       abortEarly: false,
-      stripUnknown: true 
+      stripUnknown: true
     });
   }
 
   static validateGetAllDoctors(data) {
-    return getAllDoctorsSchema.validate(data, { 
+    return getAllDoctorsSchema.validate(data, {
       abortEarly: false,
-      stripUnknown: true 
+      stripUnknown: true
     });
   }
 

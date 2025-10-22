@@ -284,8 +284,17 @@ class DoctorService {
       });
 
       if (oldStatus === 'pending' && status === 'active') {
-        const passwordResetToken = await userService.generatePasswordResetToken(doctorId);
+        const passwordResetToken = userService.generatePasswordResetToken(doctorId);
+
+        // Send welcome email
         await emailService.sendDoctorWelcomeEmail(
+          updatedDoctor.email,
+          updatedDoctor.firstName,
+          passwordResetToken
+        );
+
+        // Send password setup email
+        await emailService.sendPasswordSetupEmail(
           updatedDoctor.email,
           updatedDoctor.firstName,
           passwordResetToken

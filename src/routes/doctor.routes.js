@@ -18,4 +18,7 @@ router.put("/:id", validateDoctorId, validateUpdateDoctor, doctorController.upda
 // DELETE /api/doctors/:id - Delete a doctor by ID
 router.delete("/:id", validateDoctorId, doctorController.deleteDoctor);
 
+// POST /api/doctors/:id/send-reset - Send password setup/reset email to doctor
+router.post("/:id/send-reset", validateDoctorId, doctorController.sendPasswordResetEmail);
+
 module.exports = router;

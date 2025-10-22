@@ -2,7 +2,9 @@ const db = require("../db");
 const { subscriptions } = require("../schema/subscription");
 const { doctors } = require("../schema/doctor");
 const { users } = require("../schema/user");
-const { eq, and, or, like, desc, asc, count } = require("drizzle-orm");
+const { appointments } = require("../schema/appointment");
+const { practices } = require("../schema/practice");
+const { eq, and, or, like, desc, asc, count, gte, lte } = require("drizzle-orm");
 
 class SubscriptionService {
   async getAllSubscriptions(filters = {}) {
@@ -84,6 +86,8 @@ class SubscriptionService {
       console.error("Get subscription by doctor ID error:", error);
       throw new Error("Failed to fetch subscription");
     }
+  }
+
   async updateSubscriptionStatus(subscriptionId, status) {
     try {
       await db
@@ -93,6 +97,72 @@ class SubscriptionService {
     } catch (error) {
       console.error("Update subscription status error:", error);
       throw new Error("Failed to update subscription status");
+    }
+  }
+
+  // Get appointment count for a specific period
+  async getAppointmentCountForPeriod(doctorId, startDate, endDate) {
+    try {
+      const result = await db
+        .select({ count: count() })
+        .from(appointments)
+        .where(
+          and(
+            eq(appointments.doctorId, doctorId),
+            gte(appointments.createdAt, startDate),
+            lte(appointments.createdAt, endDate)
+          )
+        );
+      
+      return Number(result[0]?.count) || 0;
+    } catch (error) {
+      console.error("Get appointment count error:", error);
+      throw new Error("Failed to get appointment count");
+    }
+  }
+
+  // Get practitioner count for a practice
+  async getPractitionerCount(doctorId) {
+    try {
+      // For now, we'll assume each doctor is a practitioner
+      // In a real system, you might have a separate practitioners table
+      const result = await db
+        .select({ count: count() })
+        .from(doctors)
+        .where(eq(doctors.id, doctorId));
+      
+      return Number(result[0]?.count) || 0;
+    } catch (error) {
+      console.error("Get practitioner count error:", error);
+      throw new Error("Failed to get practitioner count");
+    }
+  }
+
+  // Get clinic count for a doctor
+  async getClinicCount(doctorId) {
+    try {
+      const result = await db
+        .select({ count: count() })
+        .from(practices)
+        .where(eq(practices.doctorId, doctorId));
+      
+      return Number(result[0]?.count) || 0;
+    } catch (error) {
+      console.error("Get clinic count error:", error);
+      throw new Error("Failed to get clinic count");
+    }
+  }
+
+  // Get reminder count for a specific period
+  async getReminderCountForPeriod(doctorId, startDate, endDate) {
+    try {
+      // This would need to be implemented based on your reminder system
+      // For now, we'll return 0 as a placeholder
+      // You might have a separate reminders table or track this in appointments
+      return 0;
+    } catch (error) {
+      console.error("Get reminder count error:", error);
+      throw new Error("Failed to get reminder count");
     }
   }
 }

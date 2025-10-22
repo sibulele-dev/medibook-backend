@@ -61,6 +61,10 @@ function generateVerificationToken(email) {
   return jwt.sign({ email: email }, process.env.JWT_SECRET, { expiresIn: "24h" });
 }
 
+function generatePasswordResetToken(userId) {
+  return jwt.sign({ userId: userId, type: 'password_reset' }, process.env.JWT_SECRET, { expiresIn: "24h" });
+}
+
 class UserService {
   constructor() {
     this.DEFAULT_PAGE_SIZE = 10;
@@ -81,89 +85,89 @@ class UserService {
   // Updated validation methods using Joi
   validateUserInput(userData) {
     const validationResult = UserValidation.validateUserRegistration(userData);
-    
+
     if (UserValidation.hasValidationError(validationResult)) {
       const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
       return { isValid: false, errors: [errorMessage] };
     }
-    
+
     return { isValid: true, data: UserValidation.getValidatedData(validationResult) };
   }
 
   validateUserInputWithoutPassword(userData) {
     const validationResult = UserValidation.validateAdminMemberRegistration(userData);
-    
+
     if (UserValidation.hasValidationError(validationResult)) {
       const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
       return { isValid: false, errors: [errorMessage] };
     }
-    
+
     return { isValid: true, data: UserValidation.getValidatedData(validationResult) };
   }
 
   validateDoctorInput(userData) {
     const validationResult = UserValidation.validateDoctorRegistration(userData);
-    
+
     if (UserValidation.hasValidationError(validationResult)) {
       const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
       return { isValid: false, errors: [errorMessage] };
     }
-    
+
     return { isValid: true, data: UserValidation.getValidatedData(validationResult) };
   }
 
   validateLoginInput(loginData) {
     const validationResult = UserValidation.validateLogin(loginData);
-    
+
     if (UserValidation.hasValidationError(validationResult)) {
       const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
       return { isValid: false, errors: [errorMessage] };
     }
-    
+
     return { isValid: true, data: UserValidation.getValidatedData(validationResult) };
   }
 
   validateProfileUpdateInput(updateData) {
     const validationResult = UserValidation.validateProfileUpdate(updateData);
-    
+
     if (UserValidation.hasValidationError(validationResult)) {
       const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
       return { isValid: false, errors: [errorMessage] };
     }
-    
+
     return { isValid: true, data: UserValidation.getValidatedData(validationResult) };
   }
 
   validateUserIdInput(userId) {
     const validationResult = UserValidation.validateUserIdParam({ id: userId });
-    
+
     if (UserValidation.hasValidationError(validationResult)) {
       const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
       return { isValid: false, errors: [errorMessage] };
     }
-    
+
     return { isValid: true, data: UserValidation.getValidatedData(validationResult) };
   }
 
   validateEmailInput(email) {
     const validationResult = UserValidation.validateEmail({ email });
-    
+
     if (UserValidation.hasValidationError(validationResult)) {
       const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
       return { isValid: false, errors: [errorMessage] };
     }
-    
+
     return { isValid: true, data: UserValidation.getValidatedData(validationResult) };
   }
 
   validatePaginationInput(page, limit, filters = {}) {
     const validationResult = UserValidation.validatePagination({ page, limit, filters });
-    
+
     if (UserValidation.hasValidationError(validationResult)) {
       const errorMessage = UserValidation.formatValidationErrors(validationResult.error);
       return { isValid: false, errors: [errorMessage] };
     }
-    
+
     return { isValid: true, data: UserValidation.getValidatedData(validationResult) };
   }
 
@@ -257,7 +261,7 @@ class UserService {
     // Check if user already exists
     const existingUser = await db
       .select()
-      from(users)
+    from(users)
       .where(eq(users.email, normalizedEmail));
 
     if (existingUser.length > 0) {
@@ -452,7 +456,7 @@ class UserService {
     }
 
     const validatedData = validation.data;
-    
+
     // Determine role based on allowed admin emails
     const normalizedEmail = validatedData.email;
     if (this.isEmailAllowedToRegister(normalizedEmail)) {
@@ -870,7 +874,7 @@ class UserService {
         password: newPassword,
         confirmPassword: newPassword // For validation purposes
       });
-      
+
       if (UserValidation.hasValidationError(validation)) {
         const errorMessage = UserValidation.formatValidationErrors(validation.error);
         throw new Error(errorMessage);
@@ -1128,7 +1132,7 @@ class UserService {
   }
 
   // Ensure admin user has admin record with department
-    async ensureAdminRecord(userId) {
+  async ensureAdminRecord(userId) {
     try {
       // Validate user ID using Joi
       const validation = this.validateUserIdInput(userId);
@@ -1227,7 +1231,7 @@ class UserService {
                 name: `${user.firstName} ${user.lastName}`.trim(),
                 role: user.role,
                 issuedAt: new Date(parseInt(sessionData.createdAt)),
-                expiresAt: new Date(parseInt(sessionData.expiresAt)), 
+                expiresAt: new Date(parseInt(sessionData.expiresAt)),
                 device: sessionData.userAgent || 'Unknown Device',
                 deviceType: deviceType,
                 location: sessionData.ip || 'Unknown Location',
@@ -1335,6 +1339,7 @@ module.exports.hashPassword = hashPassword;
 module.exports.verifyPassword = verifyPassword;
 module.exports.generateJWT = generateJWT;
 module.exports.generateVerificationToken = generateVerificationToken;
+module.exports.generatePasswordResetToken = generatePasswordResetToken;
 module.exports.createUser = createUser;
 module.exports.createAdminData = createAdminData;
 module.exports.createDoctorData = createDoctorData;
